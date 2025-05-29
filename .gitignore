@@ -1,0 +1,7 @@
+# for macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ignore ai
+.clinerules
