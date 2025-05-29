@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Code Review AI",
+  "version": "1.0.0",
+  "description": "GitHubのコードレビューを支援するAIツール",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://github.com/*",
+    "https://patch-diff.githubusercontent.com/*",
+    "https://api.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/pull/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon.jpg",
+      "48": "assets/icons/icon.jpg",
+      "128": "assets/icons/icon.jpg"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon.jpg",
+    "48": "assets/icons/icon.jpg",
+    "128": "assets/icons/icon.jpg"
+  },
+  "options_page": "options.html"
+}
