@@ -4,7 +4,6 @@
     "module": "esnext",
     "lib": ["esnext", "DOM", "DOM.Iterable"],
     "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,8 +14,8 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    "types": ["chrome", "jest"]
+    "types": ["chrome", "jest", "node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
