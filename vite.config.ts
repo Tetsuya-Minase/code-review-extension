@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync } from 'fs';
 
 export default defineConfig({
   build: {
@@ -9,8 +9,8 @@ export default defineConfig({
       input: {
         background: resolve(__dirname, 'src/background/background.ts'),
         content: resolve(__dirname, 'src/content/content.ts'),
-        popup: resolve(__dirname, 'src/popup/popup.html'),
-        options: resolve(__dirname, 'src/options/options.html')
+        popup: resolve(__dirname, 'src/popup/popup.ts'),
+        options: resolve(__dirname, 'src/options/options.ts')
       },
       output: {
         entryFileNames: '[name].js',
@@ -22,17 +22,25 @@ export default defineConfig({
   },
   plugins: [
     {
-      name: 'copy-manifest',
+      name: 'copy-static-files',
       writeBundle() {
         // manifest.jsonをコピー
         copyFileSync('manifest.json', 'dist/manifest.json');
         
         // アイコンをコピー
         mkdirSync('dist/assets/icons', { recursive: true });
-        copyFileSync('code-review-extension-icon.jpg', 'dist/assets/icons/icon.jpg');
+        copyFileSync('assets/icons/icon.jpg', 'dist/assets/icons/icon.jpg');
         
         // スタイルシートをコピー
         copyFileSync('src/content/styles.css', 'dist/styles.css');
+        
+        // HTMLファイルをコピー
+        copyFileSync('src/popup/popup.html', 'dist/popup.html');
+        copyFileSync('src/options/options.html', 'dist/options.html');
+        
+        // CSSファイルをコピー
+        copyFileSync('src/popup/popup.css', 'dist/popup.css');
+        copyFileSync('src/options/options.css', 'dist/options.css');
       }
     }
   ]
