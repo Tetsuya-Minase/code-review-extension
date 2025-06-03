@@ -17,6 +17,43 @@ Code Review AIは、GitHub上のプルリクエストに対してAIを活用し�
   - PRページ: 右カラムに表示
   - 差分ページ: 左カラムに表示
 
+## 技術仕様
+
+### diff取得方法
+
+PRの差分は以下のエンドポイントから取得します：
+```
+https://github.com/{owner}/{repo}/pull/{number}.diff
+```
+
+このエンドポイントは、unified diff形式でPRの全変更内容を返します。
+
+### 実装の特徴
+
+- **TDD（テスト駆動開発）**: すべての機能に対してテストを先に作成
+- **TypeScript**: 型安全性を確保
+- **セキュリティ**: XSS対策のためのHTMLエスケープ処理
+- **エラーハンドリング**: ユーザーフレンドリーなエラーメッセージ
+
+### CORS対応の実装
+
+Chrome拡張機能のコンテンツスクリプトから直接 `.diff` エンドポイントにアクセスすると、CORSエラーが発生します。これは、コンテンツスクリプトが挿入されたページのオリジン（github.com）で実行されるため、別ドメイン（patch-diff.githubusercontent.com）へのリクエストがブロックされるためです。
+
+**解決方法**：
+1. コンテンツスクリプトからバックグラウンドスクリプトへメッセージを送信
+2. バックグラウンドスクリプトで `.diff` エンドポイントにfetchリクエストを実行
+3. 取得した差分データをコンテンツスクリプトに返送
+
+この実装により、CORSの制約を回避して差分データを取得できます。
+
+```javascript
+// コンテンツスクリプト側
+chrome.runtime.sendMessage({ type: 'FETCH_PR_DIFF', data: prInfo }, callback);
+
+// バックグラウンドスクリプト側
+const response = await fetch(`https://github.com/${owner}/${repo}/pull/${number}.diff`);
+```
+
 ## インストール方法
 
 ### 開発版のインストール
