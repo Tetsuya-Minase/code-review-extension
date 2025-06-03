@@ -75,3 +75,5 @@ coverage/
 
 # ignore ai
 .clinerules
+.cursorrules
+.copilot-instructions.md
