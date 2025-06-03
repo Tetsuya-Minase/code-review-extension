@@ -16,7 +16,7 @@ export default defineConfig({
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-        format: 'cjs' // CommonJS形式で出力（Chrome拡張のService Workerと互換性あり）
+        format: 'es'
       }
     },
     emptyOutDir: true

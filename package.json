@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "GitHubのコードレビューを支援するAIツール",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
