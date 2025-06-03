@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Review AI - 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <h1>Code Review AI 設定</h1>
+      <p class="options-subtitle">拡張機能の設定を行います</p>
+    </header>
+
+    <main class="options-content">
+      <!-- APIキー設定 -->
+      <section class="settings-section">
+        <h2>OpenAI API設定</h2>
+        <div class="form-group">
+          <label for="apiKey">APIキー</label>
+          <input 
+            type="password" 
+            id="apiKey" 
+            class="form-input" 
+            placeholder="sk-..."
+          />
+          <p class="form-help">
+            OpenAI APIキーを入力してください。
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">APIキーの取得はこちら</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- レビューステップ設定 -->
+      <section class="settings-section">
+        <h2>レビューステップ設定</h2>
+        
+        <!-- Step 1 -->
+        <div class="step-config">
+          <h3>
+            <input type="checkbox" id="step1-enabled" checked />
+            <label for="step1-enabled">Step 1: 問題点の洗い出し</label>
+          </h3>
+          <div class="form-group">
+            <label for="step1-prompt">プロンプト</label>
+            <textarea 
+              id="step1-prompt" 
+              class="form-textarea" 
+              rows="4"
+              placeholder="このステップで使用するプロンプトを入力してください"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-config">
+          <h3>
+            <input type="checkbox" id="step2-enabled" checked />
+            <label for="step2-enabled">Step 2: コードレビュー</label>
+          </h3>
+          <div class="form-group">
+            <label for="step2-prompt">プロンプト</label>
+            <textarea 
+              id="step2-prompt" 
+              class="form-textarea" 
+              rows="4"
+              placeholder="このステップで使用するプロンプトを入力してください"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-config">
+          <h3>
+            <input type="checkbox" id="step3-enabled" checked />
+            <label for="step3-enabled">Step 3: 改善提案</label>
+          </h3>
+          <div class="form-group">
+            <label for="step3-prompt">プロンプト</label>
+            <textarea 
+              id="step3-prompt" 
+              class="form-textarea" 
+              rows="4"
+              placeholder="このステップで使用するプロンプトを入力してください"
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- 保存ボタン -->
+      <div class="actions">
+        <button id="saveButton" class="button button-primary">設定を保存</button>
+        <button id="resetButton" class="button button-secondary">デフォルトに戻す</button>
+      </div>
+
+      <!-- ステータスメッセージ -->
+      <div id="statusMessage" class="status-message"></div>
+    </main>
+
+    <footer class="options-footer">
+      <p>Code Review AI v1.0.0</p>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

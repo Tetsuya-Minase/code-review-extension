@@ -1,0 +1,210 @@
+/* Code Review AI - ポップアップのスタイル */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 350px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #24292f;
+  background-color: #ffffff;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+/* ヘッダー */
+.popup-header {
+  padding: 16px;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #d1d9e0;
+}
+
+.popup-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.popup-subtitle {
+  font-size: 12px;
+  color: #57606a;
+}
+
+/* メインコンテンツ */
+.popup-content {
+  flex: 1;
+  padding: 16px;
+}
+
+.popup-content section {
+  margin-bottom: 20px;
+}
+
+.popup-content section:last-child {
+  margin-bottom: 0;
+}
+
+.popup-content h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #24292f;
+}
+
+/* ステータスインジケーター */
+.status-indicator {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background-color: #57606a;
+  border-radius: 50%;
+}
+
+.status-ready .status-dot {
+  background-color: #2ea043;
+}
+
+.status-warning .status-dot {
+  background-color: #fb8500;
+}
+
+.status-error .status-dot {
+  background-color: #cf222e;
+}
+
+.status-text {
+  font-size: 13px;
+  color: #24292f;
+}
+
+/* アクションボタン */
+.action-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  color: #24292f;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-button:hover {
+  background-color: #f6f8fa;
+  border-color: #8b949e;
+}
+
+.action-button:active {
+  background-color: #ebecf0;
+}
+
+.action-button .icon {
+  margin-right: 8px;
+  color: #57606a;
+}
+
+/* 使い方リスト */
+.usage-list {
+  padding-left: 20px;
+  font-size: 13px;
+  color: #57606a;
+}
+
+.usage-list li {
+  margin-bottom: 4px;
+}
+
+/* フッター */
+.popup-footer {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #57606a;
+  text-align: center;
+  background-color: #f6f8fa;
+  border-top: 1px solid #d1d9e0;
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #c9d1d9;
+    background-color: #0d1117;
+  }
+
+  .popup-header {
+    background-color: #161b22;
+    border-bottom-color: #30363d;
+  }
+
+  .popup-header h1 {
+    color: #c9d1d9;
+  }
+
+  .popup-subtitle {
+    color: #8b949e;
+  }
+
+  .popup-content h2 {
+    color: #c9d1d9;
+  }
+
+  .status-indicator {
+    background-color: #161b22;
+  }
+
+  .status-text {
+    color: #c9d1d9;
+  }
+
+  .action-button {
+    color: #c9d1d9;
+    background-color: #0d1117;
+    border-color: #30363d;
+  }
+
+  .action-button:hover {
+    background-color: #161b22;
+    border-color: #8b949e;
+  }
+
+  .action-button:active {
+    background-color: #21262d;
+  }
+
+  .action-button .icon {
+    color: #8b949e;
+  }
+
+  .usage-list {
+    color: #8b949e;
+  }
+
+  .popup-footer {
+    color: #8b949e;
+    background-color: #161b22;
+    border-top-color: #30363d;
+  }
+}

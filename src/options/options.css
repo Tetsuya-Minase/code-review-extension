@@ -1,0 +1,284 @@
+/* Code Review AI - オプション画面のスタイル */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #24292f;
+  background-color: #f6f8fa;
+}
+
+.options-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  min-height: 100vh;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* ヘッダー */
+.options-header {
+  padding: 32px;
+  background-color: #24292f;
+  color: #ffffff;
+}
+
+.options-header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.options-subtitle {
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+/* メインコンテンツ */
+.options-content {
+  padding: 32px;
+}
+
+.settings-section {
+  margin-bottom: 48px;
+}
+
+.settings-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #d1d9e0;
+}
+
+/* フォーム要素 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #24292f;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #24292f;
+  background-color: #ffffff;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-help {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #57606a;
+}
+
+.form-help a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.form-help a:hover {
+  text-decoration: underline;
+}
+
+/* ステップ設定 */
+.step-config {
+  margin-bottom: 32px;
+  padding: 20px;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+}
+
+.step-config h3 {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.step-config h3 input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.step-config h3 label {
+  cursor: pointer;
+}
+
+/* ボタン */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.button {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  border: 1px solid;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button-primary {
+  color: #ffffff;
+  background-color: #2ea043;
+  border-color: #2ea043;
+}
+
+.button-primary:hover {
+  background-color: #2c974b;
+  border-color: #2c974b;
+}
+
+.button-secondary {
+  color: #24292f;
+  background-color: #f6f8fa;
+  border-color: #d1d9e0;
+}
+
+.button-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #8b949e;
+}
+
+/* ステータスメッセージ */
+.status-message {
+  display: none;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.status-success {
+  color: #1a7f37;
+  background-color: #dafbe1;
+  border: 1px solid #4ac26b;
+}
+
+.status-error {
+  color: #cf222e;
+  background-color: #ffebe9;
+  border: 1px solid #ff8182;
+}
+
+/* フッター */
+.options-footer {
+  padding: 24px 32px;
+  font-size: 12px;
+  color: #57606a;
+  text-align: center;
+  background-color: #f6f8fa;
+  border-top: 1px solid #d1d9e0;
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #c9d1d9;
+    background-color: #0d1117;
+  }
+
+  .options-container {
+    background-color: #0d1117;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .options-header {
+    background-color: #161b22;
+  }
+
+  .settings-section h2 {
+    border-bottom-color: #30363d;
+  }
+
+  .form-group label {
+    color: #c9d1d9;
+  }
+
+  .form-input,
+  .form-textarea {
+    color: #c9d1d9;
+    background-color: #0d1117;
+    border-color: #30363d;
+  }
+
+  .form-input:focus,
+  .form-textarea:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+  }
+
+  .form-help {
+    color: #8b949e;
+  }
+
+  .form-help a {
+    color: #58a6ff;
+  }
+
+  .step-config {
+    background-color: #161b22;
+  }
+
+  .button-secondary {
+    color: #c9d1d9;
+    background-color: #21262d;
+    border-color: #30363d;
+  }
+
+  .button-secondary:hover {
+    background-color: #30363d;
+    border-color: #8b949e;
+  }
+
+  .status-success {
+    color: #3fb950;
+    background-color: rgba(63, 185, 80, 0.1);
+    border-color: rgba(63, 185, 80, 0.4);
+  }
+
+  .status-error {
+    color: #ff7b72;
+    background-color: rgba(248, 81, 73, 0.1);
+    border-color: rgba(248, 81, 73, 0.4);
+  }
+
+  .options-footer {
+    color: #8b949e;
+    background-color: #161b22;
+    border-top-color: #30363d;
+  }
+}
