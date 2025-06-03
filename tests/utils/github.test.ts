@@ -10,6 +10,14 @@ describe('GitHubService', () => {
     
     // DOMをクリア
     document.body.innerHTML = '';
+    
+    // chrome.runtime.sendMessageのモック
+    (window as any).chrome = {
+      runtime: {
+        sendMessage: jest.fn(),
+        lastError: null
+      }
+    };
   });
 
   describe('isPRPage', () => {
@@ -114,97 +122,53 @@ describe('GitHubService', () => {
       diffUrl: 'https://github.com/owner/repo/pull/123/files'
     };
 
-    beforeEach(() => {
-      // fetchのモック
-      (window as any).fetch = jest.fn();
-    });
+    it('バックグラウンドスクリプト経由で差分を取得する', async () => {
+      const mockDiffContent = `diff --git a/src/file1.ts b/src/file1.ts
+index 1234567..abcdefg 100644
+--- a/src/file1.ts
++++ b/src/file1.ts
+@@ -1,3 +1,3 @@
+ function test() {
+-  console.log('old');
++  console.log('new');
+ }`;
 
-    it('差分ページから差分を取得する', async () => {
-      // 差分ページのDOM構造をモック
-      window.location.pathname = '/owner/repo/pull/123/files';
-      document.body.innerHTML = `
-        <div class="js-file">
-          <div class="file-header" data-path="src/file1.ts">src/file1.ts</div>
-          <div class="blob-wrapper">
-            <table class="diff-table">
-              <tr>
-                <td class="blob-code blob-code-deletion">- old line</td>
-              </tr>
-              <tr>
-                <td class="blob-code blob-code-addition">+ new line</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-        <div class="js-file">
-          <div class="file-header" data-path="src/file2.ts">src/file2.ts</div>
-          <div class="blob-wrapper">
-            <table class="diff-table">
-              <tr>
-                <td class="blob-code blob-code-context">  context line</td>
-              </tr>
-              <tr>
-                <td class="blob-code blob-code-addition">+ added line</td>
-              </tr>
-            </table>
-          </div>
-        </div>
-      `;
+      // sendMessageのモック設定
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+        callback({ success: true, data: mockDiffContent });
+      });
 
       const diff = await GitHubService.fetchPRDiff(mockPRInfo);
       
-      expect(diff).toContain('--- a/src/file1.ts');
-      expect(diff).toContain('+++ b/src/file1.ts');
-      expect(diff).toContain('- old line');
-      expect(diff).toContain('+ new line');
-      expect(diff).toContain('--- a/src/file2.ts');
-      expect(diff).toContain('+++ b/src/file2.ts');
-      expect(diff).toContain('  context line');
-      expect(diff).toContain('+ added line');
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+        { type: 'FETCH_PR_DIFF', data: mockPRInfo },
+        expect.any(Function)
+      );
+      expect(diff).toBe(mockDiffContent);
     });
 
-    it('差分ページでない場合は遷移してから取得する', async () => {
-      window.location.pathname = '/owner/repo/pull/123';
-      
-      // ページ遷移をモック
-      const originalLocation = window.location;
-      delete (window as any).location;
-      (window as any).location = {
-        ...originalLocation,
-        href: '',
-        assign: jest.fn()
-      };
-
-      // 差分ページのDOM構造をモック（遷移後）
-      setTimeout(() => {
-        window.location.pathname = '/owner/repo/pull/123/files';
-        document.body.innerHTML = `
-          <div class="js-file">
-            <div class="file-header" data-path="test.ts">test.ts</div>
-            <div class="blob-wrapper">
-              <table class="diff-table">
-                <tr>
-                  <td class="blob-code blob-code-addition">+ test</td>
-                </tr>
-              </table>
-            </div>
-          </div>
-        `;
-      }, 100);
-
-      const diff = await GitHubService.fetchPRDiff(mockPRInfo);
-      
-      expect(window.location.assign).toHaveBeenCalledWith(mockPRInfo.diffUrl);
-      expect(diff).toContain('+ test');
-    });
-
-    it('差分要素が見つからない場合はエラーをスローする', async () => {
-      window.location.pathname = '/owner/repo/pull/123/files';
-      document.body.innerHTML = '<div>No diff content</div>';
+    it('バックグラウンドスクリプトがエラーを返した場合はエラーをスローする', async () => {
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+        callback({ success: false, error: '差分の取得に失敗しました: 404 Not Found' });
+      });
 
       await expect(GitHubService.fetchPRDiff(mockPRInfo)).rejects.toThrow(
-        '差分要素が見つかりませんでした'
+        '差分の取得に失敗しました: 404 Not Found'
       );
+    });
+
+    it('Chrome runtime errorの場合は適切なエラーをスローする', async () => {
+      (chrome.runtime as any).lastError = { message: 'Extension context invalidated' };
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+        callback(null);
+      });
+
+      await expect(GitHubService.fetchPRDiff(mockPRInfo)).rejects.toThrow(
+        'Chrome runtime error: Extension context invalidated'
+      );
+      
+      // lastErrorをリセット
+      (chrome.runtime as any).lastError = null;
     });
   });
 

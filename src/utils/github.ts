@@ -38,79 +38,30 @@ export class GitHubService {
   }
 
   /**
-   * PR差分を取得
+   * PR差分を取得（バックグラウンドスクリプト経由でCORSを回避）
    * @param prInfo PR情報
    * @returns unified diff形式の差分文字列
-   * @throws 差分要素が見つからない場合
+   * @throws 差分の取得に失敗した場合
    */
   static async fetchPRDiff(prInfo: PullRequestInfo): Promise<string> {
-    // 差分ページでない場合は遷移
-    if (!this.isDiffPage()) {
-      await this.navigateToDiffPage(prInfo.diffUrl);
-    }
-    
-    // 差分要素を取得
-    const fileElements = document.querySelectorAll('.js-file');
-    if (fileElements.length === 0) {
-      throw new Error('差分要素が見つかりませんでした');
-    }
-    
-    const diffs = Array.from(fileElements).map(fileElement => 
-      this.extractFileDiff(fileElement)
-    );
-    
-    return diffs.join('\n\n');
-  }
-  
-  /**
-   * 差分ページへ遷移
-   * @param diffUrl 差分ページのURL
-   */
-  private static async navigateToDiffPage(diffUrl: string): Promise<void> {
-    window.location.assign(diffUrl);
-    // ページ遷移後の処理は実際の拡張機能では別途処理が必要
-    await new Promise(resolve => setTimeout(resolve, 200));
-  }
-  
-  /**
-   * ファイル要素から差分を抽出
-   * @param fileElement ファイル要素
-   * @returns 差分文字列
-   */
-  private static extractFileDiff(fileElement: Element): string {
-    const fileHeader = fileElement.querySelector('.file-header');
-    const filePath = fileHeader?.getAttribute('data-path') ?? 'unknown';
-    
-    const diffLines: string[] = [
-      `--- a/${filePath}`,
-      `+++ b/${filePath}`
-    ];
-    
-    // 差分コードを取得
-    const codeLines = fileElement.querySelectorAll('.blob-code');
-    codeLines.forEach(line => {
-      const text = line.textContent ?? '';
-      const diffLine = this.formatDiffLine(line, text);
-      diffLines.push(diffLine);
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: 'FETCH_PR_DIFF', data: prInfo },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(`Chrome runtime error: ${chrome.runtime.lastError.message}`));
+            return;
+          }
+          
+          if (response && response.success) {
+            console.log('差分取得成功:', response.data);
+            resolve(response.data);
+          } else {
+            reject(new Error(response?.error || '差分の取得に失敗しました'));
+          }
+        }
+      );
     });
-    
-    return diffLines.join('\n');
-  }
-  
-  /**
-   * 差分行をフォーマット
-   * @param line DOM要素
-   * @param text テキスト内容
-   * @returns フォーマットされた差分行
-   */
-  private static formatDiffLine(line: Element, text: string): string {
-    if (line.classList.contains('blob-code-deletion')) {
-      return `-${text.substring(1)}`;
-    } else if (line.classList.contains('blob-code-addition')) {
-      return `+${text.substring(1)}`;
-    } else {
-      return ` ${text}`;
-    }
   }
 
   /**
