@@ -1,4 +1,4 @@
-import { ReviewRequest, ReviewStep } from '../types';
+import { ReviewRequest, ReviewStep, ReviewResult, PullRequestInfo } from '../types';
 import { StorageService } from '../utils/storage';
 import { OpenAIClient } from '../utils/api';
 
@@ -41,6 +41,10 @@ class BackgroundService {
           const config = await StorageService.getConfig();
           sendResponse({ success: true, data: config });
           break;
+        case 'FETCH_PR_DIFF':
+          const diff = await this.fetchPRDiff(request.data);
+          sendResponse({ success: true, data: diff });
+          break;
         default:
           sendResponse({ success: false, error: 'Unknown message type' });
       }
@@ -67,6 +71,28 @@ class BackgroundService {
   ): Promise<ReviewResult> {
     // TODO: 実装
     throw new Error('Not implemented');
+  }
+
+  /**
+   * PR差分を取得（CORSを回避するためバックグラウンドで実行）
+   */
+  private async fetchPRDiff(prInfo: PullRequestInfo): Promise<string> {
+    const diffUrl = `https://github.com/${prInfo.owner}/${prInfo.repo}/pull/${prInfo.number}.diff`;
+    
+    try {
+      const response = await fetch(diffUrl);
+      
+      if (!response.ok) {
+        throw new Error(`差分の取得に失敗しました: ${response.status} ${response.statusText}`);
+      }
+      
+      return await response.text();
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('差分の取得に失敗しました')) {
+        throw error;
+      }
+      throw new Error(`差分の取得中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 
