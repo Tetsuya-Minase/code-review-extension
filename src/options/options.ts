@@ -1,14 +1,22 @@
-import { ExtensionConfig, ReviewStepConfig } from '../types';
+import { ExtensionConfig, ReviewStepConfig, AIProvider } from '../types';
 import { StorageService } from '../utils/storage';
 
 /**
  * オプション画面のメインクラス
  */
 class OptionsController {
-  private apiKeyInput: HTMLInputElement | null = null;
+  private providerSelect: HTMLSelectElement | null = null;
   private saveButton: HTMLButtonElement | null = null;
   private resetButton: HTMLButtonElement | null = null;
   private statusMessage: HTMLElement | null = null;
+
+  // プロバイダー設定要素
+  private providerConfigs: { [key in AIProvider]: HTMLElement | null } = {
+    openai: null,
+    claude: null,
+    gemini: null,
+    'openai-compatible': null
+  };
 
   // デフォルトのプロンプト
   private readonly defaultPrompts = {
@@ -36,10 +44,16 @@ class OptionsController {
    * DOM要素の取得
    */
   private setupElements(): void {
-    this.apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
+    this.providerSelect = document.getElementById('aiProvider') as HTMLSelectElement;
     this.saveButton = document.getElementById('saveButton') as HTMLButtonElement;
     this.resetButton = document.getElementById('resetButton') as HTMLButtonElement;
     this.statusMessage = document.getElementById('statusMessage');
+
+    // プロバイダー設定要素を取得
+    this.providerConfigs.openai = document.getElementById('openai-config');
+    this.providerConfigs.claude = document.getElementById('claude-config');
+    this.providerConfigs.gemini = document.getElementById('gemini-config');
+    this.providerConfigs['openai-compatible'] = document.getElementById('openai-compatible-config');
   }
 
   /**
@@ -53,6 +67,11 @@ class OptionsController {
     this.resetButton?.addEventListener('click', () => {
       this.resetToDefaults();
     });
+
+    // プロバイダー選択の変更イベント
+    this.providerSelect?.addEventListener('change', () => {
+      this.onProviderChange();
+    });
   }
 
   /**
@@ -62,10 +81,36 @@ class OptionsController {
     try {
       const config = await StorageService.getConfig();
       
-      // APIキー
-      if (this.apiKeyInput && config.apiKey) {
-        this.apiKeyInput.value = config.apiKey;
+      // プロバイダー選択
+      if (this.providerSelect) {
+        this.providerSelect.value = config.selectedProvider;
+        this.onProviderChange();
       }
+
+      // 各プロバイダーのAPIキーとモデル設定
+      Object.entries(config.providers).forEach(([provider, settings]) => {
+        const providerKey = provider as AIProvider;
+        
+        // APIキー
+        const apiKeyInput = document.getElementById(`${provider}-apiKey`) as HTMLInputElement;
+        if (apiKeyInput) {
+          apiKeyInput.value = settings.apiKey;
+        }
+
+        // モデル
+        const modelSelect = document.getElementById(`${provider}-model`) as HTMLSelectElement;
+        if (modelSelect && settings.model) {
+          modelSelect.value = settings.model;
+        }
+
+        // OpenAI Compatible用のベースURL
+        if (provider === 'openai-compatible') {
+          const baseUrlInput = document.getElementById('compatible-baseUrl') as HTMLInputElement;
+          if (baseUrlInput && settings.baseUrl) {
+            baseUrlInput.value = settings.baseUrl;
+          }
+        }
+      });
 
       // レビューステップ設定
       config.reviewSteps.forEach((stepConfig) => {
@@ -95,13 +140,36 @@ class OptionsController {
       // 保存中のフィードバック表示
       this.showSavingFeedback();
       
-      const apiKey = this.apiKeyInput?.value || '';
+      const selectedProvider = this.providerSelect?.value as AIProvider;
       
-      // APIキーの妥当性チェック
-      if (apiKey && !apiKey.startsWith('sk-')) {
-        this.showStatus('APIキーの形式が正しくありません（sk-で始まる必要があります）', 'error');
+      // 選択されたプロバイダーのバリデーション
+      const validation = this.validateProviderConfig(selectedProvider);
+      if (!validation.isValid) {
+        this.showStatus(`❌ ${validation.error}`, 'error');
+        this.animateSaveButton('error');
         return;
       }
+
+      // プロバイダー設定を収集
+      const providers: ExtensionConfig['providers'] = {
+        openai: {
+          apiKey: (document.getElementById('openai-apiKey') as HTMLInputElement)?.value || '',
+          model: (document.getElementById('openai-model') as HTMLSelectElement)?.value || 'gpt-4o'
+        },
+        claude: {
+          apiKey: (document.getElementById('claude-apiKey') as HTMLInputElement)?.value || '',
+          model: (document.getElementById('claude-model') as HTMLSelectElement)?.value || 'claude-4-20250514'
+        },
+        gemini: {
+          apiKey: (document.getElementById('gemini-apiKey') as HTMLInputElement)?.value || '',
+          model: (document.getElementById('gemini-model') as HTMLSelectElement)?.value || 'gemini-2.5-flash'
+        },
+        'openai-compatible': {
+          apiKey: (document.getElementById('compatible-apiKey') as HTMLInputElement)?.value || '',
+          baseUrl: (document.getElementById('compatible-baseUrl') as HTMLInputElement)?.value || '',
+          model: (document.getElementById('compatible-model') as HTMLInputElement)?.value || ''
+        }
+      };
       
       // レビューステップ設定を収集
       const reviewSteps: ReviewStepConfig[] = [
@@ -123,7 +191,8 @@ class OptionsController {
       ];
 
       const config: ExtensionConfig = {
-        apiKey,
+        selectedProvider,
+        providers,
         reviewSteps
       };
 
@@ -131,9 +200,11 @@ class OptionsController {
       
       // 成功時のフィードバック（詳細情報付き）
       const enabledSteps = reviewSteps.filter(step => step.enabled).length;
-      const hasApiKey = apiKey.trim().length > 0;
+      const currentProviderConfig = providers[selectedProvider];
+      const hasApiKey = currentProviderConfig.apiKey.trim().length > 0;
       
       let successMessage = '✅ 設定を保存しました';
+      successMessage += `\n🤖 プロバイダー: ${selectedProvider}`;
       if (hasApiKey) {
         successMessage += `\n🔑 APIキー: 設定済み`;
       } else {
@@ -239,6 +310,79 @@ class OptionsController {
         this.saveButton.className = 'button button-primary';
       }
     }, 2000);
+  }
+
+  /**
+   * プロバイダー変更時の処理
+   */
+  private onProviderChange(): void {
+    const selectedProvider = this.providerSelect?.value as AIProvider;
+    
+    // すべてのプロバイダー設定を非表示
+    Object.values(this.providerConfigs).forEach(config => {
+      if (config) {
+        config.style.display = 'none';
+      }
+    });
+
+    // 選択されたプロバイダーの設定を表示
+    if (selectedProvider && this.providerConfigs[selectedProvider]) {
+      this.providerConfigs[selectedProvider]!.style.display = 'block';
+    }
+  }
+
+  /**
+   * APIキーのバリデーション
+   */
+  private validateApiKey(provider: AIProvider, apiKey: string): boolean {
+    if (!apiKey.trim()) return false;
+
+    switch (provider) {
+      case 'openai':
+        return apiKey.startsWith('sk-');
+      case 'claude':
+        return apiKey.startsWith('sk-ant-');
+      case 'gemini':
+        return apiKey.startsWith('AIza');
+      case 'openai-compatible':
+        return apiKey.length > 0; // 任意の形式
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * プロバイダー設定のバリデーション
+   */
+  private validateProviderConfig(provider: AIProvider): { isValid: boolean; error?: string } {
+    const apiKeyInput = document.getElementById(`${provider}-apiKey`) as HTMLInputElement;
+    const apiKey = apiKeyInput?.value || '';
+
+    if (!this.validateApiKey(provider, apiKey)) {
+      const errorMessages = {
+        openai: 'OpenAI APIキーは sk- で始まる必要があります',
+        claude: 'Claude APIキーは sk-ant- で始まる必要があります', 
+        gemini: 'Gemini APIキーは AIza で始まる必要があります',
+        'openai-compatible': 'APIキーを入力してください'
+      };
+      return { isValid: false, error: errorMessages[provider] };
+    }
+
+    // OpenAI Compatible用の追加バリデーション
+    if (provider === 'openai-compatible') {
+      const baseUrlInput = document.getElementById('compatible-baseUrl') as HTMLInputElement;
+      const modelInput = document.getElementById('compatible-model') as HTMLInputElement;
+      
+      if (!baseUrlInput?.value?.trim()) {
+        return { isValid: false, error: 'ベースURLを入力してください' };
+      }
+      
+      if (!modelInput?.value?.trim()) {
+        return { isValid: false, error: 'モデル名を入力してください' };
+      }
+    }
+
+    return { isValid: true };
   }
 }
 
