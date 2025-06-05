@@ -32,6 +32,9 @@ $RECYCLE.BIN/
 .history/
 *.vsix
 
+# for claude
+.claude
+
 # libraries
 node_modules/
 jspm_packages/
@@ -77,3 +80,4 @@ coverage/
 .clinerules
 .cursorrules
 .copilot-instructions.md
+CLAUDE.md
