@@ -9,6 +9,7 @@ export class GitHubService {
   private static readonly DIFF_URL_PATTERN = /^\/[^/]+\/[^/]+\/pull\/\d+\/files/;
   private static readonly REVIEW_BUTTON_CLASS = 'code-review-ai-button';
   private static readonly REVIEW_RESULT_CLASS = 'code-review-ai-result';
+  private static readonly PROGRESS_CONTAINER_CLASS = 'code-review-ai-progress';
   
   /**
    * 現在のページからPR情報を取得
@@ -141,7 +142,23 @@ export class GitHubService {
     
     // Markdownをパース（簡易実装）
     const htmlContent = this.parseMarkdown(content);
-    resultContainer.innerHTML = htmlContent;
+    
+    resultContainer.innerHTML = `
+      <div class="Box-header">
+        <h3 class="Box-title d-flex flex-items-center">
+          <span class="mr-2">🤖</span>
+          AI コードレビュー結果
+          <button class="btn-octicon ml-auto" onclick="this.closest('.${this.REVIEW_RESULT_CLASS}').remove()">
+            <svg class="octicon octicon-x" viewBox="0 0 16 16" width="16" height="16">
+              <path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
+            </svg>
+          </button>
+        </h3>
+      </div>
+      <div class="Box-body">
+        <div class="review-content">${htmlContent}</div>
+      </div>
+    `;
     
     return resultContainer;
   }
@@ -186,12 +203,29 @@ export class GitHubService {
     const escaped = this.escapeHtml(markdown);
     
     // 簡易的なMarkdown変換
-    const html = escaped
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>');
+    let html = escaped
+      // ヘッダー
+      .replace(/^## (.+)$/gm, '<h2 class="h3 mb-3 mt-4">$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3 class="h4 mb-3 mt-3">$1</h3>')
+      // コードブロック
+      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-light p-3 rounded-2 mt-2 mb-2"><code>$2</code></pre>')
+      // インラインコード
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-light px-1 rounded-1">$1</code>')
+      // リスト
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul class="ml-3 mb-3">$1</ul>')
+      // 段落
+      .split('\n\n')
+      .map(paragraph => {
+        paragraph = paragraph.trim();
+        if (!paragraph) return '';
+        if (paragraph.startsWith('<h2>') || paragraph.startsWith('<h3>') || 
+            paragraph.startsWith('<pre>') || paragraph.startsWith('<ul>')) {
+          return paragraph;
+        }
+        return `<p class="mb-3">${paragraph}</p>`;
+      })
+      .join('\n');
     
     return html;
   }
@@ -211,5 +245,71 @@ export class GitHubService {
     };
     
     return text.replace(/[&<>"']/g, char => escapeMap[char]);
+  }
+
+  /**
+   * レビュー進行状況を表示
+   */
+  static showReviewProgress(message: string, status: 'started' | 'processing' | 'completed' | 'error'): void {
+    // 既存の進行状況を削除
+    this.hideReviewProgress();
+
+    // 進行状況コンテナを作成
+    const progressContainer = this.createProgressContainer(message, status);
+
+    // 表示場所を決定して追加
+    const targetContainer = this.findTargetContainer();
+    if (targetContainer) {
+      targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+    }
+  }
+
+  /**
+   * レビュー進行状況を非表示
+   */
+  static hideReviewProgress(): void {
+    const existingProgress = document.querySelector(`.${this.PROGRESS_CONTAINER_CLASS}`);
+    if (existingProgress) {
+      existingProgress.remove();
+    }
+  }
+
+  /**
+   * 進行状況コンテナを作成
+   */
+  private static createProgressContainer(message: string, status: string): HTMLDivElement {
+    const container = document.createElement('div');
+    container.className = `${this.PROGRESS_CONTAINER_CLASS} Box Box--condensed mb-3`;
+    
+    const statusIcon = this.getStatusIcon(status);
+    const statusClass = `progress-${status}`;
+    
+    container.innerHTML = `
+      <div class="Box-header ${statusClass}">
+        <h3 class="Box-title d-flex flex-items-center">
+          <span class="status-icon mr-2">${statusIcon}</span>
+          🤖 AI コードレビュー
+        </h3>
+      </div>
+      <div class="Box-body">
+        <p class="mb-0">${this.escapeHtml(message)}</p>
+        ${status === 'processing' ? '<div class="progress-bar mt-2"></div>' : ''}
+      </div>
+    `;
+
+    return container;
+  }
+
+  /**
+   * ステータスアイコンを取得
+   */
+  private static getStatusIcon(status: string): string {
+    const icons = {
+      started: '🚀',
+      processing: '⏳',
+      completed: '✅',
+      error: '❌'
+    };
+    return icons[status as keyof typeof icons] || '🤖';
   }
 }

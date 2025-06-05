@@ -91,6 +91,32 @@ class ContentScript {
     sendResponse: (response: any) => void
   ): void {
     switch (request.type) {
+      case 'REVIEW_STARTED':
+        GitHubService.showReviewProgress('レビューを開始しています...', 'started');
+        sendResponse({ success: true });
+        break;
+      case 'STEP_STARTED':
+        GitHubService.showReviewProgress(`${request.data.stepName}を実行中...`, 'processing');
+        sendResponse({ success: true });
+        break;
+      case 'STEP_COMPLETED':
+        GitHubService.showReviewProgress(`${request.data.step}が完了しました`, 'completed');
+        sendResponse({ success: true });
+        break;
+      case 'STEP_ERROR':
+        GitHubService.showReviewProgress(`${request.data.step}でエラーが発生: ${request.data.error}`, 'error');
+        sendResponse({ success: true });
+        break;
+      case 'REVIEW_COMPLETED':
+        GitHubService.displayReviewResult(request.data.result);
+        GitHubService.hideReviewProgress();
+        sendResponse({ success: true });
+        break;
+      case 'REVIEW_ERROR':
+        GitHubService.showReviewProgress(`エラー: ${request.data.error}`, 'error');
+        setTimeout(() => GitHubService.hideReviewProgress(), 5000);
+        sendResponse({ success: true });
+        break;
       case 'DISPLAY_RESULT':
         GitHubService.displayReviewResult(request.data);
         sendResponse({ success: true });
