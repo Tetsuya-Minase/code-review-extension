@@ -361,12 +361,41 @@ export class GitHubService {
         // 既存の結果が表示されていない場合のみ復元
         const existingResult = document.querySelector(`.${this.REVIEW_RESULT_CLASS}`);
         if (!existingResult) {
+          // 表示場所が利用可能になるまで待機
+          await this.waitForTargetContainer();
           await this.displayReviewResult(displayedResult.content, false);
+        } else {
+          // 既存の結果があるが、適切な場所に配置されていない場合は再配置
+          const targetContainer = this.findTargetContainer();
+          if (targetContainer && !targetContainer.contains(existingResult)) {
+            this.removeExistingResult();
+            await this.displayReviewResult(displayedResult.content, false);
+          }
         }
       }
     } catch (error) {
       console.error('レビュー結果の復元に失敗しました:', error);
     }
+  }
+
+  /**
+   * 表示対象のコンテナが利用可能になるまで待機
+   */
+  private static async waitForTargetContainer(): Promise<void> {
+    let attempts = 0;
+    const maxAttempts = 20; // 最大2秒待機
+
+    while (attempts < maxAttempts) {
+      const container = this.findTargetContainer();
+      if (container) {
+        return;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    console.warn('表示対象のコンテナが見つかりませんでした');
   }
 
   /**

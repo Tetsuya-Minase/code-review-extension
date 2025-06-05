@@ -5,6 +5,9 @@ import { ReviewRequest } from '../types';
  * コンテンツスクリプトのメインクラス
  */
 class ContentScript {
+  private observer: MutationObserver | null = null;
+  private currentUrl: string = '';
+
   constructor() {
     this.initialize();
   }
@@ -19,12 +22,18 @@ class ContentScript {
     } else {
       this.setup();
     }
+
+    // SPA遷移を監視
+    this.setupNavigationObserver();
   }
 
   /**
    * セットアップ処理
    */
   private async setup(): Promise<void> {
+    // 現在のURLを記録
+    this.currentUrl = window.location.href;
+
     // PRページまたは差分ページの場合のみ処理を実行
     if (GitHubService.isPRPage() || GitHubService.isDiffPage()) {
       this.injectReviewButton();
@@ -32,6 +41,51 @@ class ContentScript {
       
       // 保存されたレビュー結果を復元
       await this.restoreReviewResults();
+    }
+  }
+
+  /**
+   * SPA遷移を監視するMutationObserverをセットアップ
+   */
+  private setupNavigationObserver(): void {
+    // URLの変更を監視（GitHubのSPA遷移検出）
+    this.observer = new MutationObserver(() => {
+      if (window.location.href !== this.currentUrl) {
+        this.currentUrl = window.location.href;
+        this.handleNavigation();
+      }
+    });
+
+    // body要素の変更を監視
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // popstateイベントも監視（ブラウザの戻る/進むボタン）
+    window.addEventListener('popstate', () => {
+      setTimeout(() => this.handleNavigation(), 100);
+    });
+  }
+
+  /**
+   * ナビゲーション（ページ遷移）時の処理
+   */
+  private async handleNavigation(): Promise<void> {
+    try {
+      // 少し待ってからDOM要素が安定するのを待つ
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // PRページまたは差分ページの場合のみ処理を実行
+      if (GitHubService.isPRPage() || GitHubService.isDiffPage()) {
+        // レビューボタンを再注入（存在しない場合のみ）
+        this.injectReviewButton();
+        
+        // 保存されたレビュー結果を復元
+        await this.restoreReviewResults();
+      }
+    } catch (error) {
+      console.error('ナビゲーション処理でエラーが発生しました:', error);
     }
   }
 
