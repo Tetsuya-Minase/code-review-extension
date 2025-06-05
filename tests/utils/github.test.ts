@@ -134,7 +134,7 @@ index 1234567..abcdefg 100644
  }`;
 
       // sendMessageのモック設定
-      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((_message, callback) => {
         callback({ success: true, data: mockDiffContent });
       });
 
@@ -148,7 +148,7 @@ index 1234567..abcdefg 100644
     });
 
     it('バックグラウンドスクリプトがエラーを返した場合はエラーをスローする', async () => {
-      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((_message, callback) => {
         callback({ success: false, error: '差分の取得に失敗しました: 404 Not Found' });
       });
 
@@ -159,7 +159,7 @@ index 1234567..abcdefg 100644
 
     it('Chrome runtime errorの場合は適切なエラーをスローする', async () => {
       (chrome.runtime as any).lastError = { message: 'Extension context invalidated' };
-      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((message, callback) => {
+      (chrome.runtime.sendMessage as jest.Mock).mockImplementation((_message, callback) => {
         callback(null);
       });
 

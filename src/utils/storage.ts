@@ -19,7 +19,7 @@ export class StorageService {
       },
       claude: {
         apiKey: '',
-        model: 'claude-4-20250514'
+        model: 'claude-sonnet-4-20250514'
       },
       gemini: {
         apiKey: '',

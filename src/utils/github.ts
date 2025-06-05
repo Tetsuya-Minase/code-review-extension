@@ -55,7 +55,6 @@ export class GitHubService {
           }
           
           if (response && response.success) {
-            console.log('差分取得成功:', response.data);
             resolve(response.data);
           } else {
             reject(new Error(response?.error || '差分の取得に失敗しました'));

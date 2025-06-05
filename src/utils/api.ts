@@ -65,7 +65,7 @@ export class OpenAIClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
+  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
     let fullPrompt = `${prompt}\n\n`;
 
     // 前のステップの結果を含める
@@ -102,18 +102,20 @@ export class ClaudeClient extends BaseAIClient {
         }
       ]
     };
-
+    
     const response = await fetch(this.apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
+      console.error('Claude API error:', await response.text());
       throw new Error(`Claude API error: ${response.status} ${response.statusText}`);
     }
 
@@ -131,7 +133,7 @@ export class ClaudeClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
+  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
     let fullPrompt = 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。\n\n';
     fullPrompt += `${prompt}\n\n`;
 
@@ -201,7 +203,7 @@ export class GeminiClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
+  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
     let fullPrompt = 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。\n\n';
     fullPrompt += `${prompt}\n\n`;
 
@@ -272,7 +274,7 @@ export class OpenAICompatibleClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
+  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
     let fullPrompt = `${prompt}\n\n`;
 
     if (previousResults.length > 0) {

@@ -28,7 +28,7 @@ class BackgroundService {
    */
   private async handleMessage(
     request: any,
-    sender: chrome.runtime.MessageSender,
+    _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
@@ -191,7 +191,7 @@ class BackgroundService {
 
     let finalResult = '## 🤖 AI コードレビュー結果\n\n';
     
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       const stepName = this.getStepName(result.step);
       finalResult += `### ${stepName}\n\n${result.content}\n\n`;
     });
