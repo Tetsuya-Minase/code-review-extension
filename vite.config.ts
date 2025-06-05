@@ -16,7 +16,8 @@ export default defineConfig({
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-        format: 'es'
+        format: 'es',
+        manualChunks: undefined
       }
     },
     emptyOutDir: true
