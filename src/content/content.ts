@@ -157,7 +157,7 @@ class ContentScript {
    */
   private handleMessage(
     request: any,
-    sender: chrome.runtime.MessageSender,
+    _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ): void {
     switch (request.type) {
