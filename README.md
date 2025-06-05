@@ -4,12 +4,13 @@ GitHubのコードレビューを支援するAIツール
 
 ## 概要
 
-Code Review AIは、GitHub上のプルリクエストに対してAIを活用した自動コードレビューを提供するChrome拡張機能です。OpenAI APIを使用して、3段階の詳細なレビューを実行します。
+Code Review AIは、GitHub上のプルリクエストに対してAIを活用した自動コードレビューを提供するChrome拡張機能です。OpenAI、Claude、Gemini、OpenAI Compatible APIの4つのプロバイダーに対応し、3段階の詳細なレビューを実行します。
 
 ## 主な機能
 
 - **設定機能**
-  - OpenAI APIキーの安全な保存
+  - 4つのAIプロバイダー（OpenAI、Claude、Gemini、OpenAI Compatible）への対応
+  - 各プロバイダーのAPIキーとモデル設定
   - 3ステップのレビュープロンプトカスタマイズ
   - リアルタイムフィードバック付き設定保存
 - **PRレビュー機能**
@@ -19,8 +20,9 @@ Code Review AIは、GitHub上のプルリクエストに対してAIを活用し�
     - **Step 2**: Step 1の結果とコード差分を元にコードレビューを実行
     - **Step 3**: Step 2の結果とコード差分を元に改善点を提案
   - レビュー結果の表示
-    - PRページ: 右カラムに表示
-    - 差分ページ: 左カラムに表示
+    - PRページ: 右サイドバーに表示
+    - 差分ページ（/files）: 左側ファイル一覧エリアの上部に表示
+    - 表示形式: Markdown形式のテキストをそのまま表示
 
 ## 技術仕様
 
@@ -61,6 +63,30 @@ chrome.runtime.sendMessage({ type: 'FETCH_PR_DIFF', data: prInfo }, callback);
 const response = await fetch(`https://github.com/${owner}/${repo}/pull/${number}.diff`);
 ```
 
+### AIプロバイダー対応
+
+本拡張機能は以下のAIプロバイダーに対応しています：
+
+#### OpenAI
+- **対応モデル**: GPT-4o、O1-Preview、O1-Mini、GPT-4 Turbo
+- **API形式**: OpenAI Chat Completions API
+- **特記事項**: system/userメッセージ形式でプロンプトを分離
+
+#### Claude (Anthropic)
+- **対応モデル**: Claude 4 (Sonnet 4)、Claude 4 (Opus 4)、Claude 3.7 Sonnet
+- **API形式**: Anthropic Messages API
+- **特記事項**: `anthropic-dangerous-direct-browser-access`ヘッダーでCORS対応
+
+#### Gemini (Google)
+- **対応モデル**: Gemini 2.0 Flash Exp、Gemini 2.0 Flash、Gemini 1.5 Pro、Gemini 1.5 Flash
+- **API形式**: Google Generative Language API
+- **特記事項**: system promptとuser promptを結合して送信
+
+#### OpenAI Compatible
+- **対応**: Ollama、LM Studio、その他OpenAI互換API
+- **API形式**: OpenAI Chat Completions API互換
+- **特記事項**: カスタムベースURL設定が必要
+
 ### 設定管理とストレージ
 
 拡張機能の設定は Chrome Storage API を使用して安全に管理されます：
@@ -72,7 +98,14 @@ const response = await fetch(`https://github.com/${owner}/${repo}/pull/${number}
 **データ形式**:
 ```typescript
 interface ExtensionConfig {
-  apiKey: string;
+  selectedProvider: AIProvider;
+  providers: {
+    [K in AIProvider]: {
+      apiKey: string;
+      model: string;
+      baseUrl?: string;
+    };
+  };
   reviewSteps: {
     step: 'step1' | 'step2' | 'step3';
     enabled: boolean;
@@ -85,6 +118,24 @@ interface ExtensionConfig {
 - APIキーは暗号化されてブラウザ内に保存
 - 外部への意図しない送信を防ぐバリデーション機能
 - XSS対策のためのHTMLエスケープ処理
+
+### ユーザーインターフェース
+
+#### レビューボタンの配置
+- **配置場所**: PRタイトル横（PRページ・差分ページ共通）
+- **フォールバック機能**: GitHub DOM構造の変更に対応する複数の挿入候補
+
+#### 進行状況表示
+- **リアルタイム表示**: 各レビューステップの実行状況
+- **状態表示**: 開始、処理中、完了、エラーの4つの状態
+- **アニメーション**: 処理中の視覚的フィードバック
+
+#### レビュー結果の表示
+- **表示形式**: Markdown形式のテキストをそのまま表示（HTMLパースなし）
+- **表示場所**：
+  - **PRページ**: 右サイドバーに表示
+  - **差分ページ（/files）**: 左側ファイル一覧エリアの上部に表示
+- **表示内容**: Step 3の結果のみを表示（Step 1、2は内部処理でのみ使用）
 
 ### レビュー方法
 事前に登録したpromptはsystem promptとし、各stepではそれぞれ以下の内容をuser promptに設定します。
@@ -142,21 +193,29 @@ npm run build
 
 ## 使用方法
 
-1. Chrome拡張機能の設定画面でOpenAI APIキーを設定
-2. GitHubのPRページを開く
+1. Chrome拡張機能の設定画面でAIプロバイダーとAPIキーを設定
+2. GitHubのPRページまたは差分ページ（/files）を開く
 3. PRタイトル横の「レビュー」ボタンをクリック
-4. AIによるレビュー結果が表示される
+4. リアルタイムで進行状況が表示され、完了後にレビュー結果が表示される
 
 ## 設定
 
-### OpenAI APIキー
+### AIプロバイダーの設定
 
-1. [OpenAI Platform](https://platform.openai.com/api-keys)でAPIキーを取得
+1. [対応するプロバイダーのAPIキーを取得](#プロバイダー別APIキー取得方法)
 2. 拡張機能のアイコンをクリックし、「設定を開く」を選択
-3. APIキーを入力して「設定を保存」をクリック
-4. 保存成功時には詳細なフィードバックが表示されます
+3. 使用するプロバイダーを選択
+4. APIキーとモデルを設定
+5. 「設定を保存」をクリック
 
-**APIキー形式**: `sk-`で始まる形式のみ受け付けます。不正な形式の場合はエラーメッセージが表示されます。
+#### プロバイダー別APIキー取得方法
+
+- **OpenAI**: [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Claude**: [Anthropic Console](https://console.anthropic.com/)
+- **Gemini**: [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **OpenAI Compatible**: 各サービスの提供する方法に従う
+
+**APIキー形式**: 各プロバイダーの指定する形式のみ受け付けます。不正な形式の場合はエラーメッセージが表示されます。
 
 ### レビューステップのカスタマイズ
 
@@ -232,13 +291,21 @@ code-review-extension/
 - Vite
 - Jest
 - Chrome Extension API
-- OpenAI API
+- 複数AIプロバイダー対応
+  - OpenAI API
+  - Claude (Anthropic) API
+  - Gemini (Google) API
+  - OpenAI Compatible APIs
 
 ## 要件
 
 - Chrome ブラウザ
-- OpenAI APIキー
-- Node.js 16以上
+- いずれかのAIプロバイダーのAPIキー
+  - OpenAI APIキー
+  - Claude (Anthropic) APIキー
+  - Gemini (Google) APIキー
+  - OpenAI Compatible APIサーバー
+- Node.js 16以上（開発時のみ）
 
 ## ライセンス
 
