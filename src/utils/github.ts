@@ -139,8 +139,8 @@ export class GitHubService {
     const resultContainer = document.createElement('div');
     resultContainer.className = `${this.REVIEW_RESULT_CLASS} Box mt-3`;
     
-    // Markdownをパース（簡易実装）
-    const htmlContent = this.parseMarkdown(content);
+    // Markdownを生テキストとして表示
+    const escapedContent = this.escapeHtml(content);
     
     resultContainer.innerHTML = `
       <div class="Box-header">
@@ -155,7 +155,7 @@ export class GitHubService {
         </h3>
       </div>
       <div class="Box-body">
-        <div class="review-content">${htmlContent}</div>
+        <pre class="review-content-raw">${escapedContent}</pre>
       </div>
     `;
     

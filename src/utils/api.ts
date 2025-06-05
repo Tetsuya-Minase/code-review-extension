@@ -95,7 +95,7 @@ export class ClaudeClient extends BaseAIClient {
     
     const requestBody = {
       model: this.model,
-      max_tokens: 2000,
+      max_tokens: 20000,
       temperature: 0.3,
       system: prompt,
       messages: [

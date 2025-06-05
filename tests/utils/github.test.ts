@@ -231,8 +231,7 @@ index 1234567..abcdefg 100644
 
       const resultElement = document.querySelector('.code-review-ai-result');
       expect(resultElement).toBeTruthy();
-      expect(resultElement?.innerHTML).toContain('<h2 class="h3 mb-3 mt-4">レビュー結果</h2>');
-      expect(resultElement?.innerHTML).toContain('<p class="mb-3">テストレビュー内容</p>');
+      expect(resultElement?.innerHTML).toContain('<pre class="review-content-raw">## レビュー結果\n\nテストレビュー内容</pre>');
     });
 
     it('差分ページの左カラムにレビュー結果を表示する', () => {
