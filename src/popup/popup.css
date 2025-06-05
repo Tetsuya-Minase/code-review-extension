@@ -94,6 +94,25 @@ body {
   color: #24292f;
 }
 
+/* プロバイダー情報 */
+.provider-info {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.provider-label {
+  color: #57606a;
+  margin-right: 4px;
+}
+
+.provider-name {
+  font-weight: 500;
+  color: #24292f;
+}
+
 /* アクションボタン */
 .action-button {
   display: flex;
@@ -176,6 +195,18 @@ body {
   }
 
   .status-text {
+    color: #c9d1d9;
+  }
+
+  .provider-info {
+    background-color: #21262d;
+  }
+
+  .provider-label {
+    color: #8b949e;
+  }
+
+  .provider-name {
     color: #c9d1d9;
   }
 

@@ -9,6 +9,7 @@ export class GitHubService {
   private static readonly DIFF_URL_PATTERN = /^\/[^/]+\/[^/]+\/pull\/\d+\/files/;
   private static readonly REVIEW_BUTTON_CLASS = 'code-review-ai-button';
   private static readonly REVIEW_RESULT_CLASS = 'code-review-ai-result';
+  private static readonly PROGRESS_CONTAINER_CLASS = 'code-review-ai-progress';
   
   /**
    * 現在のページからPR情報を取得
@@ -54,7 +55,6 @@ export class GitHubService {
           }
           
           if (response && response.success) {
-            console.log('差分取得成功:', response.data);
             resolve(response.data);
           } else {
             reject(new Error(response?.error || '差分の取得に失敗しました'));
@@ -75,8 +75,26 @@ export class GitHubService {
       return;
     }
     
-    // 挿入場所を探す
-    const actionsContainer = document.querySelector('.gh-header-actions');
+    // PRタイトル横の操作エリアを探す（PRページ・差分ページ共通）
+    let actionsContainer: Element | null = document.querySelector('.gh-header-actions');
+    
+    // フォールバック: より一般的なセレクタを試す
+    if (!actionsContainer) {
+      actionsContainer = document.querySelector('.gh-header .gh-header-meta .gh-header-actions');
+    }
+    
+    // 更なるフォールバック: PRヘッダー全体を探す
+    if (!actionsContainer) {
+      const prHeader = document.querySelector('.gh-header-meta');
+      if (prHeader) {
+        // アクションコンテナを作成
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'gh-header-actions';
+        prHeader.appendChild(actionDiv);
+        actionsContainer = actionDiv;
+      }
+    }
+    
     if (!actionsContainer) {
       throw new Error('レビューボタンの挿入場所が見つかりませんでした');
     }
@@ -117,7 +135,12 @@ export class GitHubService {
       throw new Error('レビュー結果の表示場所が見つかりませんでした');
     }
     
-    targetContainer.appendChild(resultContainer);
+    // 差分ページではファイル一覧の上部に、PRページでは右サイドバーに表示
+    if (this.isDiffPage()) {
+      targetContainer.insertBefore(resultContainer, targetContainer.firstChild);
+    } else {
+      targetContainer.appendChild(resultContainer);
+    }
   }
   
   /**
@@ -139,9 +162,25 @@ export class GitHubService {
     const resultContainer = document.createElement('div');
     resultContainer.className = `${this.REVIEW_RESULT_CLASS} Box mt-3`;
     
-    // Markdownをパース（簡易実装）
-    const htmlContent = this.parseMarkdown(content);
-    resultContainer.innerHTML = htmlContent;
+    // Markdownを生テキストとして表示
+    const escapedContent = this.escapeHtml(content);
+    
+    resultContainer.innerHTML = `
+      <div class="Box-header">
+        <h3 class="Box-title d-flex flex-items-center">
+          <span class="mr-2">🤖</span>
+          AI コードレビュー結果
+          <button class="btn-octicon ml-auto" onclick="this.closest('.${this.REVIEW_RESULT_CLASS}').remove()">
+            <svg class="octicon octicon-x" viewBox="0 0 16 16" width="16" height="16">
+              <path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
+            </svg>
+          </button>
+        </h3>
+      </div>
+      <div class="Box-body">
+        <pre class="review-content-raw">${escapedContent}</pre>
+      </div>
+    `;
     
     return resultContainer;
   }
@@ -152,8 +191,16 @@ export class GitHubService {
    */
   private static findTargetContainer(): Element | null {
     if (this.isDiffPage()) {
+      // 差分ページでは左側のファイル一覧エリアに表示
+      const filesContainer = document.querySelector('#files');
+      if (filesContainer) {
+        // ファイル一覧の上部に表示するため、最初の子要素として挿入
+        return filesContainer;
+      }
+      // フォールバック: ツールバー
       return document.querySelector('.pr-toolbar');
     } else {
+      // PRページでは右サイドバーに表示
       return document.querySelector('.Layout-sidebar');
     }
   }
@@ -176,25 +223,6 @@ export class GitHubService {
     return this.DIFF_URL_PATTERN.test(pathname);
   }
   
-  /**
-   * 簡易的なMarkdownパーサー
-   * @param markdown Markdown形式のテキスト
-   * @returns HTML形式のテキスト
-   */
-  private static parseMarkdown(markdown: string): string {
-    // XSS対策のためHTMLエスケープ
-    const escaped = this.escapeHtml(markdown);
-    
-    // 簡易的なMarkdown変換
-    const html = escaped
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>');
-    
-    return html;
-  }
   
   /**
    * HTMLエスケープ
@@ -211,5 +239,76 @@ export class GitHubService {
     };
     
     return text.replace(/[&<>"']/g, char => escapeMap[char]);
+  }
+
+  /**
+   * レビュー進行状況を表示
+   */
+  static showReviewProgress(message: string, status: 'started' | 'processing' | 'completed' | 'error'): void {
+    // 既存の進行状況を削除
+    this.hideReviewProgress();
+
+    // 進行状況コンテナを作成
+    const progressContainer = this.createProgressContainer(message, status);
+
+    // 表示場所を決定して追加
+    const targetContainer = this.findTargetContainer();
+    if (targetContainer) {
+      // 差分ページではファイル一覧の上部に、PRページでは右サイドバーに表示
+      if (this.isDiffPage()) {
+        targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+      } else {
+        targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+      }
+    }
+  }
+
+  /**
+   * レビュー進行状況を非表示
+   */
+  static hideReviewProgress(): void {
+    const existingProgress = document.querySelector(`.${this.PROGRESS_CONTAINER_CLASS}`);
+    if (existingProgress) {
+      existingProgress.remove();
+    }
+  }
+
+  /**
+   * 進行状況コンテナを作成
+   */
+  private static createProgressContainer(message: string, status: string): HTMLDivElement {
+    const container = document.createElement('div');
+    container.className = `${this.PROGRESS_CONTAINER_CLASS} Box Box--condensed mb-3`;
+    
+    const statusIcon = this.getStatusIcon(status);
+    const statusClass = `progress-${status}`;
+    
+    container.innerHTML = `
+      <div class="Box-header ${statusClass}">
+        <h3 class="Box-title d-flex flex-items-center">
+          <span class="status-icon mr-2">${statusIcon}</span>
+          🤖 AI コードレビュー
+        </h3>
+      </div>
+      <div class="Box-body">
+        <p class="mb-0">${this.escapeHtml(message)}</p>
+        ${status === 'processing' ? '<div class="progress-bar mt-2"></div>' : ''}
+      </div>
+    `;
+
+    return container;
+  }
+
+  /**
+   * ステータスアイコンを取得
+   */
+  private static getStatusIcon(status: string): string {
+    const icons = {
+      started: '🚀',
+      processing: '⏳',
+      completed: '✅',
+      error: '❌'
+    };
+    return icons[status as keyof typeof icons] || '🤖';
   }
 }

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { copyFileSync, mkdirSync } from 'fs';
 
 export default defineConfig({
   build: {
@@ -31,7 +31,7 @@ export default defineConfig({
         
         // アイコンをコピー
         mkdirSync('dist/assets/icons', { recursive: true });
-        copyFileSync('assets/icons/icon.jpg', 'dist/assets/icons/icon.jpg');
+        copyFileSync('assets/icons/icon.png', 'dist/assets/icons/icon.png');
         
         // スタイルシートをコピー
         copyFileSync('src/content/styles.css', 'dist/styles.css');
