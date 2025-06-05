@@ -92,7 +92,16 @@ class OptionsController {
    */
   private async saveSettings(): Promise<void> {
     try {
+      // 保存中のフィードバック表示
+      this.showSavingFeedback();
+      
       const apiKey = this.apiKeyInput?.value || '';
+      
+      // APIキーの妥当性チェック
+      if (apiKey && !apiKey.startsWith('sk-')) {
+        this.showStatus('APIキーの形式が正しくありません（sk-で始まる必要があります）', 'error');
+        return;
+      }
       
       // レビューステップ設定を収集
       const reviewSteps: ReviewStepConfig[] = [
@@ -119,10 +128,28 @@ class OptionsController {
       };
 
       await StorageService.saveConfig(config);
-      this.showStatus('設定を保存しました', 'success');
+      
+      // 成功時のフィードバック（詳細情報付き）
+      const enabledSteps = reviewSteps.filter(step => step.enabled).length;
+      const hasApiKey = apiKey.trim().length > 0;
+      
+      let successMessage = '✅ 設定を保存しました';
+      if (hasApiKey) {
+        successMessage += `\n🔑 APIキー: 設定済み`;
+      } else {
+        successMessage += `\n⚠️ APIキー: 未設定`;
+      }
+      successMessage += `\n📝 有効なレビューステップ: ${enabledSteps}/3`;
+      
+      this.showStatus(successMessage, 'success');
+      
+      // 保存ボタンに成功アニメーション
+      this.animateSaveButton('success');
+      
     } catch (error) {
       console.error('設定の保存に失敗しました:', error);
-      this.showStatus('設定の保存に失敗しました', 'error');
+      this.showStatus('❌ 設定の保存に失敗しました', 'error');
+      this.animateSaveButton('error');
     }
   }
 
@@ -166,16 +193,52 @@ class OptionsController {
   private showStatus(message: string, type: 'success' | 'error'): void {
     if (!this.statusMessage) return;
 
-    this.statusMessage.textContent = message;
+    this.statusMessage.innerHTML = message.replace(/\n/g, '<br>');
     this.statusMessage.className = `status-message status-${type}`;
     this.statusMessage.style.display = 'block';
 
-    // 3秒後に非表示
+    // 成功時は5秒、エラー時は7秒後に非表示
+    const timeout = type === 'success' ? 5000 : 7000;
     setTimeout(() => {
       if (this.statusMessage) {
         this.statusMessage.style.display = 'none';
       }
-    }, 3000);
+    }, timeout);
+  }
+
+  /**
+   * 保存中のフィードバック表示
+   */
+  private showSavingFeedback(): void {
+    if (!this.statusMessage || !this.saveButton) return;
+
+    this.statusMessage.innerHTML = '💾 設定を保存中...';
+    this.statusMessage.className = 'status-message status-loading';
+    this.statusMessage.style.display = 'block';
+
+    this.saveButton.disabled = true;
+    this.saveButton.textContent = '保存中...';
+  }
+
+  /**
+   * 保存ボタンのアニメーション
+   */
+  private animateSaveButton(type: 'success' | 'error'): void {
+    if (!this.saveButton) return;
+
+    const originalText = '設定を保存';
+    const animationText = type === 'success' ? '✅ 保存完了!' : '❌ 保存失敗';
+
+    this.saveButton.textContent = animationText;
+    this.saveButton.className = `button button-primary ${type === 'success' ? 'save-success' : 'save-error'}`;
+
+    setTimeout(() => {
+      if (this.saveButton) {
+        this.saveButton.disabled = false;
+        this.saveButton.textContent = originalText;
+        this.saveButton.className = 'button button-primary';
+      }
+    }, 2000);
   }
 }
 
