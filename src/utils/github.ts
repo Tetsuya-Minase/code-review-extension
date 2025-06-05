@@ -1,4 +1,5 @@
 import { PullRequestInfo } from '../types';
+import { StorageService } from './storage';
 
 /**
  * GitHub関連のユーティリティクラス
@@ -120,9 +121,10 @@ export class GitHubService {
   /**
    * レビュー結果を表示
    * @param content Markdown形式のレビュー内容
+   * @param saveToStorage 結果をストレージに保存するかどうか（デフォルト: true）
    * @throws 表示場所が見つからない場合
    */
-  static displayReviewResult(content: string): void {
+  static async displayReviewResult(content: string, saveToStorage: boolean = true): Promise<void> {
     // 既存の結果を削除
     this.removeExistingResult();
     
@@ -140,6 +142,19 @@ export class GitHubService {
       targetContainer.insertBefore(resultContainer, targetContainer.firstChild);
     } else {
       targetContainer.appendChild(resultContainer);
+    }
+
+    // ストレージに保存
+    if (saveToStorage) {
+      const prInfo = this.extractPRInfo();
+      if (prInfo) {
+        const prId = `${prInfo.owner}-${prInfo.repo}-${prInfo.number}`;
+        try {
+          await StorageService.saveDisplayedResult(prId, content);
+        } catch (error) {
+          console.error('レビュー結果の保存に失敗しました:', error);
+        }
+      }
     }
   }
   
@@ -170,7 +185,7 @@ export class GitHubService {
         <h3 class="Box-title d-flex flex-items-center">
           <span class="mr-2">🤖</span>
           AI コードレビュー結果
-          <button class="btn-octicon ml-auto" onclick="this.closest('.${this.REVIEW_RESULT_CLASS}').remove()">
+          <button class="btn-octicon ml-auto review-close-button">
             <svg class="octicon octicon-x" viewBox="0 0 16 16" width="16" height="16">
               <path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
             </svg>
@@ -181,6 +196,23 @@ export class GitHubService {
         <pre class="review-content-raw">${escapedContent}</pre>
       </div>
     `;
+
+    // クローズボタンのイベントリスナーを追加
+    const closeButton = resultContainer.querySelector('.review-close-button');
+    if (closeButton) {
+      closeButton.addEventListener('click', async () => {
+        const prInfo = this.extractPRInfo();
+        if (prInfo) {
+          const prId = `${prInfo.owner}-${prInfo.repo}-${prInfo.number}`;
+          try {
+            await StorageService.clearDisplayedResult(prId);
+          } catch (error) {
+            console.error('レビュー結果の削除に失敗しました:', error);
+          }
+        }
+        resultContainer.remove();
+      });
+    }
     
     return resultContainer;
   }
@@ -310,5 +342,37 @@ export class GitHubService {
       error: '❌'
     };
     return icons[status as keyof typeof icons] || '🤖';
+  }
+
+  /**
+   * 保存されたレビュー結果を復元
+   */
+  static async restoreReviewResult(): Promise<void> {
+    const prInfo = this.extractPRInfo();
+    if (!prInfo) {
+      return;
+    }
+
+    const prId = `${prInfo.owner}-${prInfo.repo}-${prInfo.number}`;
+    
+    try {
+      const displayedResult = await StorageService.getDisplayedResult(prId);
+      if (displayedResult) {
+        // 既存の結果が表示されていない場合のみ復元
+        const existingResult = document.querySelector(`.${this.REVIEW_RESULT_CLASS}`);
+        if (!existingResult) {
+          await this.displayReviewResult(displayedResult.content, false);
+        }
+      }
+    } catch (error) {
+      console.error('レビュー結果の復元に失敗しました:', error);
+    }
+  }
+
+  /**
+   * レビュー結果が表示されているかどうかを確認
+   */
+  static isReviewResultDisplayed(): boolean {
+    return !!document.querySelector(`.${this.REVIEW_RESULT_CLASS}`);
   }
 }

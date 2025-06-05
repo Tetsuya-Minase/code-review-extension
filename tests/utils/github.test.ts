@@ -259,7 +259,7 @@ index 1234567..abcdefg 100644
   });
 
   describe('displayReviewResult', () => {
-    it('PRページの右カラムにレビュー結果を表示する', () => {
+    it('PRページの右カラムにレビュー結果を表示する', async () => {
       window.location.pathname = '/owner/repo/pull/123';
       document.body.innerHTML = `
         <div class="Layout-sidebar">
@@ -268,7 +268,7 @@ index 1234567..abcdefg 100644
       `;
 
       const content = '## レビュー結果\n\nテストレビュー内容';
-      GitHubService.displayReviewResult(content);
+      await GitHubService.displayReviewResult(content, false);
 
       const resultElement = document.querySelector('.code-review-ai-result');
       expect(resultElement).toBeTruthy();
@@ -308,13 +308,84 @@ index 1234567..abcdefg 100644
       expect(resultElement?.innerHTML).toContain('&lt;script&gt;');
     });
 
-    it('表示場所が見つからない場合はエラーをスローする', () => {
+    it('表示場所が見つからない場合はエラーをスローする', async () => {
       window.location.pathname = '/owner/repo/pull/123';
       document.body.innerHTML = '<div>Empty page</div>';
 
-      expect(() => GitHubService.displayReviewResult('content')).toThrow(
+      await expect(GitHubService.displayReviewResult('content')).rejects.toThrow(
         'レビュー結果の表示場所が見つかりませんでした'
       );
+    });
+  });
+
+  describe('restoreReviewResult', () => {
+    it('保存されたレビュー結果を復元する', async () => {
+      window.location.pathname = '/owner/repo/pull/123';
+      document.body.innerHTML = `
+        <div class="Layout-sidebar">
+          <div class="existing-content">既存のコンテンツ</div>
+        </div>
+      `;
+
+      // StorageService.getDisplayedResultをモック
+      const mockDisplayedResult = {
+        content: '## 保存されたレビュー結果\n\n復元テスト内容',
+        timestamp: Date.now()
+      };
+      
+      jest.spyOn(require('../../src/utils/storage').StorageService, 'getDisplayedResult')
+        .mockResolvedValue(mockDisplayedResult);
+
+      await GitHubService.restoreReviewResult();
+
+      const resultElement = document.querySelector('.code-review-ai-result');
+      expect(resultElement).toBeTruthy();
+      expect(resultElement?.innerHTML).toContain('<pre class="review-content-raw">## 保存されたレビュー結果\n\n復元テスト内容</pre>');
+    });
+
+    it('保存されたレビュー結果がない場合は何もしない', async () => {
+      window.location.pathname = '/owner/repo/pull/123';
+      document.body.innerHTML = `
+        <div class="Layout-sidebar">
+          <div class="existing-content">既存のコンテンツ</div>
+        </div>
+      `;
+
+      // StorageService.getDisplayedResultをnullを返すようにモック
+      jest.spyOn(require('../../src/utils/storage').StorageService, 'getDisplayedResult')
+        .mockResolvedValue(null);
+
+      await GitHubService.restoreReviewResult();
+
+      const resultElement = document.querySelector('.code-review-ai-result');
+      expect(resultElement).toBeNull();
+    });
+
+    it('既にレビュー結果が表示されている場合は復元しない', async () => {
+      window.location.pathname = '/owner/repo/pull/123';
+      document.body.innerHTML = `
+        <div class="Layout-sidebar">
+          <div class="code-review-ai-result">既存の結果</div>
+        </div>
+      `;
+
+      const mockDisplayedResult = {
+        content: '## 保存されたレビュー結果\n\n復元テスト内容',
+        timestamp: Date.now()
+      };
+      
+      const getDisplayedResultSpy = jest.spyOn(require('../../src/utils/storage').StorageService, 'getDisplayedResult')
+        .mockResolvedValue(mockDisplayedResult);
+
+      await GitHubService.restoreReviewResult();
+
+      // getDisplayedResultが呼ばれたことを確認
+      expect(getDisplayedResultSpy).toHaveBeenCalled();
+      
+      // 既存の結果のみが存在することを確認
+      const resultElements = document.querySelectorAll('.code-review-ai-result');
+      expect(resultElements.length).toBe(1);
+      expect(resultElements[0].textContent).toBe('既存の結果');
     });
   });
 });

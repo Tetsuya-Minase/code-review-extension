@@ -24,11 +24,27 @@ class ContentScript {
   /**
    * セットアップ処理
    */
-  private setup(): void {
+  private async setup(): Promise<void> {
     // PRページまたは差分ページの場合のみ処理を実行
     if (GitHubService.isPRPage() || GitHubService.isDiffPage()) {
       this.injectReviewButton();
       this.listenForMessages();
+      
+      // 保存されたレビュー結果を復元
+      await this.restoreReviewResults();
+    }
+  }
+
+  /**
+   * 保存されたレビュー結果を復元
+   */
+  private async restoreReviewResults(): Promise<void> {
+    try {
+      // DOM要素が準備されるまで少し待つ
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await GitHubService.restoreReviewResult();
+    } catch (error) {
+      console.error('レビュー結果の復元に失敗しました:', error);
     }
   }
 

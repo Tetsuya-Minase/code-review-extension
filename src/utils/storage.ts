@@ -6,6 +6,7 @@ import { ExtensionConfig, ReviewResult, ReviewStepConfig, AIProvider } from '../
 export class StorageService {
   private static readonly CONFIG_KEY = 'extension_config';
   private static readonly REVIEW_RESULTS_PREFIX = 'review_results_';
+  private static readonly DISPLAYED_RESULTS_PREFIX = 'displayed_results_';
 
   /**
    * デフォルト設定
@@ -72,14 +73,28 @@ export class StorageService {
       if (!config.selectedProvider || !config.providers) {
         // 古い形式の場合、マイグレーション
         const migratedConfig: ExtensionConfig = {
-          ...this.DEFAULT_CONFIG,
+          selectedProvider: 'openai',
+          providers: {
+            openai: {
+              apiKey: ('apiKey' in config && config.apiKey) ? config.apiKey as string : '',
+              model: 'gpt-4o'
+            },
+            claude: {
+              apiKey: '',
+              model: 'claude-sonnet-4-20250514'
+            },
+            gemini: {
+              apiKey: '',
+              model: 'gemini-2.5-flash'
+            },
+            'openai-compatible': {
+              apiKey: '',
+              baseUrl: '',
+              model: ''
+            }
+          },
           reviewSteps: config.reviewSteps
         };
-        
-        // 古いapiKeyがある場合はOpenAIに設定
-        if ('apiKey' in config && config.apiKey) {
-          migratedConfig.providers.openai.apiKey = config.apiKey as string;
-        }
         
         return migratedConfig;
       }
@@ -175,5 +190,51 @@ export class StorageService {
       provider: config.selectedProvider,
       ...config.providers[config.selectedProvider]
     };
+  }
+
+  /**
+   * 表示済みレビュー結果を保存
+   */
+  static async saveDisplayedResult(prId: string, result: string): Promise<void> {
+    try {
+      const key = this.DISPLAYED_RESULTS_PREFIX + prId;
+      await chrome.storage.local.set({
+        [key]: {
+          content: result,
+          timestamp: Date.now()
+        }
+      });
+    } catch (error) {
+      console.error('表示済みレビュー結果の保存に失敗しました:', error);
+      throw new Error('表示済みレビュー結果の保存に失敗しました');
+    }
+  }
+
+  /**
+   * 表示済みレビュー結果を取得
+   */
+  static async getDisplayedResult(prId: string): Promise<{ content: string; timestamp: number } | null> {
+    try {
+      const key = this.DISPLAYED_RESULTS_PREFIX + prId;
+      const result = await chrome.storage.local.get(key);
+      
+      return result[key] || null;
+    } catch (error) {
+      console.error('表示済みレビュー結果の取得に失敗しました:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 表示済みレビュー結果をクリア
+   */
+  static async clearDisplayedResult(prId: string): Promise<void> {
+    try {
+      const key = this.DISPLAYED_RESULTS_PREFIX + prId;
+      await chrome.storage.local.remove(key);
+    } catch (error) {
+      console.error('表示済みレビュー結果のクリアに失敗しました:', error);
+      throw new Error('表示済みレビュー結果のクリアに失敗しました');
+    }
   }
 }

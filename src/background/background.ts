@@ -128,6 +128,13 @@ class BackgroundService {
       const step3Result = results.find(result => result.step === 'step3');
       const finalResult = step3Result ? step3Result.content : 'レビューが完了しましたが、最終結果が生成されませんでした。';
 
+      // 表示結果をストレージに保存
+      try {
+        await StorageService.saveDisplayedResult(this.currentReviewId, finalResult);
+      } catch (error) {
+        console.error('表示結果の保存に失敗しました:', error);
+      }
+
       // 最終結果を表示
       this.notifyContentScript('REVIEW_COMPLETED', {
         reviewId: this.currentReviewId,
