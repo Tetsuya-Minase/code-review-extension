@@ -8,14 +8,19 @@ Code Review AIは、GitHub上のプルリクエストに対してAIを活用し�
 
 ## 主な機能
 
-- PRページに「レビュー」ボタンを追加
-- 3段階の段階的なコードレビュー
-  - **Step 1**: 問題点の洗い出し、特にクリティカルな問題がないかを確認
-  - **Step 2**: Step 1の結果とコード差分を元にコードレビューを実行
-  - **Step 3**: Step 2の結果とコード差分を元に改善点を提案
-- レビュー結果の表示
-  - PRページ: 右カラムに表示
-  - 差分ページ: 左カラムに表示
+- **設定機能**
+  - OpenAI APIキーの安全な保存
+  - 3ステップのレビュープロンプトカスタマイズ
+  - リアルタイムフィードバック付き設定保存
+- **PRレビュー機能**
+  - PRページに「レビュー」ボタンを追加
+  - 3段階の段階的なコードレビュー
+    - **Step 1**: 問題点の洗い出し、特にクリティカルな問題がないかを確認
+    - **Step 2**: Step 1の結果とコード差分を元にコードレビューを実行
+    - **Step 3**: Step 2の結果とコード差分を元に改善点を提案
+  - レビュー結果の表示
+    - PRページ: 右カラムに表示
+    - 差分ページ: 左カラムに表示
 
 ## 技術仕様
 
@@ -34,6 +39,8 @@ https://github.com/{owner}/{repo}/pull/{number}.diff
 - **TypeScript**: 型安全性を確保
 - **セキュリティ**: XSS対策のためのHTMLエスケープ処理
 - **エラーハンドリング**: ユーザーフレンドリーなエラーメッセージ
+- **ストレージ管理**: Chrome Storage APIによる安全な設定保存
+- **ユーザーエクスペリエンス**: リアルタイムフィードバックとアニメーション
 
 ### CORS対応の実装
 
@@ -53,6 +60,31 @@ chrome.runtime.sendMessage({ type: 'FETCH_PR_DIFF', data: prInfo }, callback);
 // バックグラウンドスクリプト側
 const response = await fetch(`https://github.com/${owner}/${repo}/pull/${number}.diff`);
 ```
+
+### 設定管理とストレージ
+
+拡張機能の設定は Chrome Storage API を使用して安全に管理されます：
+
+**設定データの保存場所**:
+- **chrome.storage.sync**: APIキーとレビューステップ設定（デバイス間で同期）
+- **chrome.storage.local**: レビュー結果の一時保存（ローカルのみ）
+
+**データ形式**:
+```typescript
+interface ExtensionConfig {
+  apiKey: string;
+  reviewSteps: {
+    step: 'step1' | 'step2' | 'step3';
+    enabled: boolean;
+    prompt: string;
+  }[];
+}
+```
+
+**セキュリティ**:
+- APIキーは暗号化されてブラウザ内に保存
+- 外部への意図しない送信を防ぐバリデーション機能
+- XSS対策のためのHTMLエスケープ処理
 
 ## インストール方法
 
@@ -93,11 +125,20 @@ npm run build
 
 1. [OpenAI Platform](https://platform.openai.com/api-keys)でAPIキーを取得
 2. 拡張機能のアイコンをクリックし、「設定を開く」を選択
-3. APIキーを入力して保存
+3. APIキーを入力して「設定を保存」をクリック
+4. 保存成功時には詳細なフィードバックが表示されます
+
+**APIキー形式**: `sk-`で始まる形式のみ受け付けます。不正な形式の場合はエラーメッセージが表示されます。
 
 ### レビューステップのカスタマイズ
 
-各ステップのプロンプトは設定画面でカスタマイズ可能です。
+各ステップのプロンプトは設定画面で個別にカスタマイズ可能です：
+
+- **Step 1 プロンプト**: 問題点洗い出し用のプロンプト
+- **Step 2 プロンプト**: 詳細レビュー用のプロンプト  
+- **Step 3 プロンプト**: 改善提案用のプロンプト
+
+各ステップは個別に有効/無効の切り替えが可能で、「デフォルトに戻す」ボタンで初期設定に復元できます。
 
 ## 開発
 
@@ -139,9 +180,12 @@ code-review-extension/
 │   ├── background/         # バックグラウンドスクリプト
 │   ├── content/           # コンテンツスクリプト
 │   ├── popup/             # ポップアップUI
-│   ├── options/           # 設定画面
+│   ├── options/           # 設定画面（APIキー・プロンプト設定）
 │   ├── types/             # TypeScript型定義
 │   └── utils/             # ユーティリティ関数
+│       ├── api.ts         # OpenAI API通信
+│       ├── github.ts      # GitHub操作
+│       └── storage.ts     # Chrome Storage管理
 ├── assets/                # 静的アセット
 │   └── icons/            # アイコンファイル
 ├── dist/                  # ビルド出力
