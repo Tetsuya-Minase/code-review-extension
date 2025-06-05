@@ -70,7 +70,8 @@ body {
 }
 
 .form-input,
-.form-textarea {
+.form-textarea,
+.form-select {
   width: 100%;
   padding: 8px 12px;
   font-size: 14px;
@@ -83,10 +84,20 @@ body {
 }
 
 .form-input:focus,
-.form-textarea:focus {
+.form-textarea:focus,
+.form-select:focus {
   outline: none;
   border-color: #0969da;
   box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.form-select {
+  cursor: pointer;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23666" d="M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+  appearance: none;
 }
 
 .form-textarea {
@@ -107,6 +118,20 @@ body {
 
 .form-help a:hover {
   text-decoration: underline;
+}
+
+/* プロバイダー設定 */
+.provider-config {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  border-left: 4px solid #0969da;
+  transition: opacity 0.3s ease;
+}
+
+.provider-config.hidden {
+  display: none;
 }
 
 /* ステップ設定 */
@@ -267,16 +292,27 @@ body {
   }
 
   .form-input,
-  .form-textarea {
+  .form-textarea,
+  .form-select {
     color: #c9d1d9;
     background-color: #0d1117;
     border-color: #30363d;
   }
 
   .form-input:focus,
-  .form-textarea:focus {
+  .form-textarea:focus,
+  .form-select:focus {
     border-color: #58a6ff;
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+  }
+
+  .form-select {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23c9d1d9" d="M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z"/></svg>');
+  }
+
+  .provider-config {
+    background-color: #161b22;
+    border-left-color: #58a6ff;
   }
 
   .form-help {

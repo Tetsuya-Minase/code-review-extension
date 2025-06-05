@@ -1,4 +1,4 @@
-import { ExtensionConfig, ReviewResult, ReviewStepConfig } from '../types';
+import { ExtensionConfig, ReviewResult, ReviewStepConfig, AIProvider } from '../types';
 
 /**
  * Chrome Storage APIのラッパークラス
@@ -11,7 +11,26 @@ export class StorageService {
    * デフォルト設定
    */
   private static readonly DEFAULT_CONFIG: ExtensionConfig = {
-    apiKey: '',
+    selectedProvider: 'openai',
+    providers: {
+      openai: {
+        apiKey: '',
+        model: 'gpt-4o'
+      },
+      claude: {
+        apiKey: '',
+        model: 'claude-4-20250514'
+      },
+      gemini: {
+        apiKey: '',
+        model: 'gemini-2.5-flash'
+      },
+      'openai-compatible': {
+        apiKey: '',
+        baseUrl: '',
+        model: ''
+      }
+    },
     reviewSteps: [
       {
         step: 'step1',
@@ -47,6 +66,22 @@ export class StorageService {
       // 設定の妥当性チェック
       if (!config.reviewSteps || config.reviewSteps.length !== 3) {
         return this.DEFAULT_CONFIG;
+      }
+
+      // 新しい設定形式への移行チェック
+      if (!config.selectedProvider || !config.providers) {
+        // 古い形式の場合、マイグレーション
+        const migratedConfig: ExtensionConfig = {
+          ...this.DEFAULT_CONFIG,
+          reviewSteps: config.reviewSteps
+        };
+        
+        // 古いapiKeyがある場合はOpenAIに設定
+        if ('apiKey' in config && config.apiKey) {
+          migratedConfig.providers.openai.apiKey = config.apiKey as string;
+        }
+        
+        return migratedConfig;
       }
 
       return config;
@@ -124,9 +159,21 @@ export class StorageService {
   static async hasApiKey(): Promise<boolean> {
     try {
       const config = await this.getConfig();
-      return config.apiKey.trim().length > 0;
+      const currentProvider = config.providers[config.selectedProvider];
+      return currentProvider.apiKey.trim().length > 0;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * 現在選択されているプロバイダーの設定を取得
+   */
+  static async getCurrentProviderConfig() {
+    const config = await this.getConfig();
+    return {
+      provider: config.selectedProvider,
+      ...config.providers[config.selectedProvider]
+    };
   }
 }

@@ -13,10 +13,32 @@ export interface ReviewStepConfig {
 }
 
 /**
+ * AIプロバイダーの種類
+ */
+export type AIProvider = 'openai' | 'claude' | 'gemini' | 'openai-compatible';
+
+/**
+ * AIプロバイダー設定
+ */
+export interface AIProviderConfig {
+  readonly provider: AIProvider;
+  readonly apiKey: string;
+  readonly baseUrl?: string; // OpenAI Compatible用
+  readonly model?: string; // デフォルトモデル
+}
+
+/**
  * 拡張機能の設定
  */
 export interface ExtensionConfig {
-  readonly apiKey: string;
+  readonly selectedProvider: AIProvider;
+  readonly providers: {
+    readonly [K in AIProvider]: {
+      readonly apiKey: string;
+      readonly baseUrl?: string;
+      readonly model?: string;
+    };
+  };
   readonly reviewSteps: readonly ReviewStepConfig[];
 }
 
