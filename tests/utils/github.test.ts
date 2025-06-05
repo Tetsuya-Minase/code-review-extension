@@ -193,6 +193,28 @@ index 1234567..abcdefg 100644
       expect(onClick).toHaveBeenCalled();
     });
 
+    it('差分ページにレビューボタンを挿入する', () => {
+      window.location.pathname = '/owner/repo/pull/123/files';
+      
+      // 差分ページでも同じPRヘッダー構造をモック
+      document.body.innerHTML = `
+        <div class="gh-header-actions">
+          <button class="btn">既存のボタン</button>
+        </div>
+      `;
+
+      const onClick = jest.fn();
+      GitHubService.insertReviewButton(onClick);
+
+      const button = document.querySelector('button.code-review-ai-button') as HTMLButtonElement;
+      expect(button).toBeTruthy();
+      expect(button.textContent).toContain('レビュー');
+
+      // クリックイベントをテスト
+      button.click();
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
     it('既にボタンが存在する場合は重複挿入しない', () => {
       document.body.innerHTML = `
         <div class="gh-header-actions">
@@ -205,6 +227,25 @@ index 1234567..abcdefg 100644
 
       const buttons = document.querySelectorAll('button.code-review-ai-button');
       expect(buttons.length).toBe(1);
+    });
+
+    it('gh-header-metaがある場合はアクションコンテナを作成する', () => {
+      document.body.innerHTML = `
+        <div class="gh-header-meta">
+          <div class="existing-content">既存のコンテンツ</div>
+        </div>
+      `;
+
+      const onClick = jest.fn();
+      GitHubService.insertReviewButton(onClick);
+
+      const button = document.querySelector('button.code-review-ai-button') as HTMLButtonElement;
+      expect(button).toBeTruthy();
+      expect(button.textContent).toContain('レビュー');
+      
+      // アクションコンテナが作成されたことを確認
+      const actionsContainer = document.querySelector('.gh-header-actions');
+      expect(actionsContainer).toBeTruthy();
     });
 
     it('挿入場所が見つからない場合はエラーをスローする', () => {
@@ -237,8 +278,8 @@ index 1234567..abcdefg 100644
     it('差分ページの左カラムにレビュー結果を表示する', () => {
       window.location.pathname = '/owner/repo/pull/123/files';
       document.body.innerHTML = `
-        <div class="pr-toolbar">
-          <div class="existing-content">既存のコンテンツ</div>
+        <div id="files">
+          <div class="existing-file-list">既存のファイル一覧</div>
         </div>
       `;
 
@@ -247,7 +288,10 @@ index 1234567..abcdefg 100644
 
       const resultElement = document.querySelector('.code-review-ai-result');
       expect(resultElement).toBeTruthy();
-      expect(resultElement?.parentElement?.className).toContain('pr-toolbar');
+      
+      // ファイル一覧の最初の子要素として挿入されることを確認
+      const filesContainer = document.querySelector('#files');
+      expect(filesContainer?.firstChild).toBe(resultElement);
     });
 
     it('XSS攻撃を防ぐ', () => {

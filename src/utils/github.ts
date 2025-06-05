@@ -75,8 +75,26 @@ export class GitHubService {
       return;
     }
     
-    // 挿入場所を探す
-    const actionsContainer = document.querySelector('.gh-header-actions');
+    // PRタイトル横の操作エリアを探す（PRページ・差分ページ共通）
+    let actionsContainer: Element | null = document.querySelector('.gh-header-actions');
+    
+    // フォールバック: より一般的なセレクタを試す
+    if (!actionsContainer) {
+      actionsContainer = document.querySelector('.gh-header .gh-header-meta .gh-header-actions');
+    }
+    
+    // 更なるフォールバック: PRヘッダー全体を探す
+    if (!actionsContainer) {
+      const prHeader = document.querySelector('.gh-header-meta');
+      if (prHeader) {
+        // アクションコンテナを作成
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'gh-header-actions';
+        prHeader.appendChild(actionDiv);
+        actionsContainer = actionDiv;
+      }
+    }
+    
     if (!actionsContainer) {
       throw new Error('レビューボタンの挿入場所が見つかりませんでした');
     }
@@ -117,7 +135,12 @@ export class GitHubService {
       throw new Error('レビュー結果の表示場所が見つかりませんでした');
     }
     
-    targetContainer.appendChild(resultContainer);
+    // 差分ページではファイル一覧の上部に、PRページでは右サイドバーに表示
+    if (this.isDiffPage()) {
+      targetContainer.insertBefore(resultContainer, targetContainer.firstChild);
+    } else {
+      targetContainer.appendChild(resultContainer);
+    }
   }
   
   /**
@@ -168,8 +191,16 @@ export class GitHubService {
    */
   private static findTargetContainer(): Element | null {
     if (this.isDiffPage()) {
+      // 差分ページでは左側のファイル一覧エリアに表示
+      const filesContainer = document.querySelector('#files');
+      if (filesContainer) {
+        // ファイル一覧の上部に表示するため、最初の子要素として挿入
+        return filesContainer;
+      }
+      // フォールバック: ツールバー
       return document.querySelector('.pr-toolbar');
     } else {
+      // PRページでは右サイドバーに表示
       return document.querySelector('.Layout-sidebar');
     }
   }
@@ -192,42 +223,6 @@ export class GitHubService {
     return this.DIFF_URL_PATTERN.test(pathname);
   }
   
-  /**
-   * 簡易的なMarkdownパーサー
-   * @param markdown Markdown形式のテキスト
-   * @returns HTML形式のテキスト
-   */
-  private static parseMarkdown(markdown: string): string {
-    // XSS対策のためHTMLエスケープ
-    const escaped = this.escapeHtml(markdown);
-    
-    // 簡易的なMarkdown変換
-    let html = escaped
-      // ヘッダー
-      .replace(/^## (.+)$/gm, '<h2 class="h3 mb-3 mt-4">$1</h2>')
-      .replace(/^### (.+)$/gm, '<h3 class="h4 mb-3 mt-3">$1</h3>')
-      // コードブロック
-      .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-light p-3 rounded-2 mt-2 mb-2"><code>$2</code></pre>')
-      // インラインコード
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-light px-1 rounded-1">$1</code>')
-      // リスト
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul class="ml-3 mb-3">$1</ul>')
-      // 段落
-      .split('\n\n')
-      .map(paragraph => {
-        paragraph = paragraph.trim();
-        if (!paragraph) return '';
-        if (paragraph.startsWith('<h2>') || paragraph.startsWith('<h3>') || 
-            paragraph.startsWith('<pre>') || paragraph.startsWith('<ul>')) {
-          return paragraph;
-        }
-        return `<p class="mb-3">${paragraph}</p>`;
-      })
-      .join('\n');
-    
-    return html;
-  }
   
   /**
    * HTMLエスケープ
@@ -259,7 +254,12 @@ export class GitHubService {
     // 表示場所を決定して追加
     const targetContainer = this.findTargetContainer();
     if (targetContainer) {
-      targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+      // 差分ページではファイル一覧の上部に、PRページでは右サイドバーに表示
+      if (this.isDiffPage()) {
+        targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+      } else {
+        targetContainer.insertBefore(progressContainer, targetContainer.firstChild);
+      }
     }
   }
 
