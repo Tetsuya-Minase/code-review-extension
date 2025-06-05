@@ -124,8 +124,9 @@ class BackgroundService {
         }
       }
 
-      // 全体の結果を構築
-      const finalResult = this.buildFinalResult(results);
+      // step3の結果のみを表示
+      const step3Result = results.find(result => result.step === 'step3');
+      const finalResult = step3Result ? step3Result.content : 'レビューが完了しましたが、最終結果が生成されませんでした。';
 
       // 最終結果を表示
       this.notifyContentScript('REVIEW_COMPLETED', {
@@ -181,25 +182,6 @@ class BackgroundService {
     return stepNames[step] || step;
   }
 
-  /**
-   * 最終結果を構築
-   */
-  private buildFinalResult(results: readonly ReviewResult[]): string {
-    if (results.length === 0) {
-      return '## 🤖 AI コードレビュー結果\n\nレビューが完了しましたが、結果が生成されませんでした。';
-    }
-
-    let finalResult = '## 🤖 AI コードレビュー結果\n\n';
-    
-    results.forEach((result) => {
-      const stepName = this.getStepName(result.step);
-      finalResult += `### ${stepName}\n\n${result.content}\n\n`;
-    });
-
-    finalResult += `---\n*レビュー完了時刻: ${new Date().toLocaleString('ja-JP')}*`;
-    
-    return finalResult;
-  }
 
   /**
    * PR差分を取得（CORSを回避するためバックグラウンドで実行）

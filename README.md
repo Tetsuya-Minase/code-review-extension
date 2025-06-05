@@ -86,6 +86,34 @@ interface ExtensionConfig {
 - 外部への意図しない送信を防ぐバリデーション機能
 - XSS対策のためのHTMLエスケープ処理
 
+### レビュー方法
+事前に登録したpromptはsystem promptとし、各stepではそれぞれ以下の内容をuser promptに設定します。
+また、レビュー結果についてはstep3の結果のみをページ上に表示し、step1、step2の結果は表示しなくて良いです。
+
+#### step1
+```
+# diff
+【取得したPull Requestの差分】
+```
+
+#### step2
+```
+# diff
+【取得したPull Requestの差分】
+
+# 注意すべき箇所
+【step1の結果JSON】
+```
+
+#### step3
+```
+# diff
+【取得したPull Requestの差分】
+
+# レビュー結果
+【step2の結果JSON】
+```
+
 ## インストール方法
 
 ### 開発版のインストール

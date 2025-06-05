@@ -20,18 +20,18 @@ export class OpenAIClient extends BaseAIClient {
   private readonly apiUrl = 'https://api.openai.com/v1/chat/completions';
 
   async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const fullPrompt = this.buildPrompt(request, step, prompt, previousResults);
+    const userPrompt = this.buildUserPrompt(request, step, previousResults);
     
     const requestBody = {
       model: this.model,
       messages: [
         {
           role: 'system' as const,
-          content: 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。'
+          content: prompt
         },
         {
           role: 'user' as const,
-          content: fullPrompt
+          content: userPrompt
         }
       ],
       temperature: 0.3,
@@ -65,20 +65,22 @@ export class OpenAIClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
-    let fullPrompt = `${prompt}\n\n`;
+  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+    let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    // 前のステップの結果を含める
-    if (previousResults.length > 0) {
-      fullPrompt += '前のステップの結果:\n';
-      previousResults.forEach(result => {
-        fullPrompt += `\n## ${result.step.toUpperCase()}の結果:\n${result.content}\n`;
-      });
-      fullPrompt += '\n上記を踏まえて、以下のコード差分をレビューしてください:\n\n';
+    if (step === 'step2' && previousResults.length > 0) {
+      const step1Result = previousResults.find(r => r.step === 'step1');
+      if (step1Result) {
+        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
+      }
+    } else if (step === 'step3' && previousResults.length > 0) {
+      const step2Result = previousResults.find(r => r.step === 'step2');
+      if (step2Result) {
+        userPrompt += '# レビュー結果\n' + step2Result.content;
+      }
     }
 
-    fullPrompt += '## コード差分:\n```diff\n' + request.diff + '\n```';
-    return fullPrompt;
+    return userPrompt;
   }
 }
 
@@ -89,16 +91,17 @@ export class ClaudeClient extends BaseAIClient {
   private readonly apiUrl = 'https://api.anthropic.com/v1/messages';
 
   async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const fullPrompt = this.buildPrompt(request, step, prompt, previousResults);
+    const userPrompt = this.buildUserPrompt(request, step, previousResults);
     
     const requestBody = {
       model: this.model,
       max_tokens: 2000,
       temperature: 0.3,
+      system: prompt,
       messages: [
         {
           role: 'user' as const,
-          content: fullPrompt
+          content: userPrompt
         }
       ]
     };
@@ -133,20 +136,22 @@ export class ClaudeClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
-    let fullPrompt = 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。\n\n';
-    fullPrompt += `${prompt}\n\n`;
+  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+    let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (previousResults.length > 0) {
-      fullPrompt += '前のステップの結果:\n';
-      previousResults.forEach(result => {
-        fullPrompt += `\n## ${result.step.toUpperCase()}の結果:\n${result.content}\n`;
-      });
-      fullPrompt += '\n上記を踏まえて、以下のコード差分をレビューしてください:\n\n';
+    if (step === 'step2' && previousResults.length > 0) {
+      const step1Result = previousResults.find(r => r.step === 'step1');
+      if (step1Result) {
+        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
+      }
+    } else if (step === 'step3' && previousResults.length > 0) {
+      const step2Result = previousResults.find(r => r.step === 'step2');
+      if (step2Result) {
+        userPrompt += '# レビュー結果\n' + step2Result.content;
+      }
     }
 
-    fullPrompt += '## コード差分:\n```diff\n' + request.diff + '\n```';
-    return fullPrompt;
+    return userPrompt;
   }
 }
 
@@ -159,7 +164,8 @@ export class GeminiClient extends BaseAIClient {
   }
 
   async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const fullPrompt = this.buildPrompt(request, step, prompt, previousResults);
+    const userPrompt = this.buildUserPrompt(request, step, previousResults);
+    const fullPrompt = prompt + '\n\n' + userPrompt;
     
     const requestBody = {
       contents: [
@@ -203,20 +209,22 @@ export class GeminiClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
-    let fullPrompt = 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。\n\n';
-    fullPrompt += `${prompt}\n\n`;
+  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+    let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (previousResults.length > 0) {
-      fullPrompt += '前のステップの結果:\n';
-      previousResults.forEach(result => {
-        fullPrompt += `\n## ${result.step.toUpperCase()}の結果:\n${result.content}\n`;
-      });
-      fullPrompt += '\n上記を踏まえて、以下のコード差分をレビューしてください:\n\n';
+    if (step === 'step2' && previousResults.length > 0) {
+      const step1Result = previousResults.find(r => r.step === 'step1');
+      if (step1Result) {
+        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
+      }
+    } else if (step === 'step3' && previousResults.length > 0) {
+      const step2Result = previousResults.find(r => r.step === 'step2');
+      if (step2Result) {
+        userPrompt += '# レビュー結果\n' + step2Result.content;
+      }
     }
 
-    fullPrompt += '## コード差分:\n```diff\n' + request.diff + '\n```';
-    return fullPrompt;
+    return userPrompt;
   }
 }
 
@@ -229,18 +237,18 @@ export class OpenAICompatibleClient extends BaseAIClient {
   }
 
   async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const fullPrompt = this.buildPrompt(request, step, prompt, previousResults);
+    const userPrompt = this.buildUserPrompt(request, step, previousResults);
     
     const requestBody = {
       model: this.model,
       messages: [
         {
           role: 'system' as const,
-          content: 'あなたは経験豊富なソフトウェアエンジニアです。コードレビューを行い、建設的なフィードバックを日本語で提供してください。'
+          content: prompt
         },
         {
           role: 'user' as const,
-          content: fullPrompt
+          content: userPrompt
         }
       ],
       temperature: 0.3,
@@ -274,19 +282,22 @@ export class OpenAICompatibleClient extends BaseAIClient {
     };
   }
 
-  private buildPrompt(request: ReviewRequest, _step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[]): string {
-    let fullPrompt = `${prompt}\n\n`;
+  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+    let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (previousResults.length > 0) {
-      fullPrompt += '前のステップの結果:\n';
-      previousResults.forEach(result => {
-        fullPrompt += `\n## ${result.step.toUpperCase()}の結果:\n${result.content}\n`;
-      });
-      fullPrompt += '\n上記を踏まえて、以下のコード差分をレビューしてください:\n\n';
+    if (step === 'step2' && previousResults.length > 0) {
+      const step1Result = previousResults.find(r => r.step === 'step1');
+      if (step1Result) {
+        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
+      }
+    } else if (step === 'step3' && previousResults.length > 0) {
+      const step2Result = previousResults.find(r => r.step === 'step2');
+      if (step2Result) {
+        userPrompt += '# レビュー結果\n' + step2Result.content;
+      }
     }
 
-    fullPrompt += '## コード差分:\n```diff\n' + request.diff + '\n```';
-    return fullPrompt;
+    return userPrompt;
   }
 }
 
