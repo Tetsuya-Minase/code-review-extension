@@ -26,15 +26,15 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "assets/icons/icon.jpg",
-      "48": "assets/icons/icon.jpg",
-      "128": "assets/icons/icon.jpg"
+      "16": "assets/icons/icon.png",
+      "48": "assets/icons/icon.png",
+      "128": "assets/icons/icon.png"
     }
   },
   "icons": {
-    "16": "assets/icons/icon.jpg",
-    "48": "assets/icons/icon.jpg",
-    "128": "assets/icons/icon.jpg"
+    "16": "assets/icons/icon.png",
+    "48": "assets/icons/icon.png",
+    "128": "assets/icons/icon.png"
   },
   "options_page": "options.html"
 }
