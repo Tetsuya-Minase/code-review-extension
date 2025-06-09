@@ -229,10 +229,20 @@ class OptionsController {
    */
   private resetToDefaults(): void {
     if (confirm('設定をデフォルトに戻しますか？')) {
-      // APIキーをクリア
-      if (this.apiKeyInput) {
-        this.apiKeyInput.value = '';
-      }
+      // 全プロバイダーのAPIキーをクリア
+      const apiKeyIds = ['openai-apiKey', 'claude-apiKey', 'gemini-apiKey', 'compatible-apiKey'];
+      apiKeyIds.forEach(id => {
+        const input = document.getElementById(id) as HTMLInputElement;
+        if (input) {
+          input.value = '';
+        }
+      });
+
+      // OpenAI Compatible特有のフィールドもクリア
+      const baseUrlInput = document.getElementById('compatible-baseUrl') as HTMLInputElement;
+      const modelInput = document.getElementById('compatible-model') as HTMLInputElement;
+      if (baseUrlInput) baseUrlInput.value = '';
+      if (modelInput) modelInput.value = '';
 
       // デフォルトプロンプトを設定
       this.setDefaultPrompts();
@@ -355,7 +365,9 @@ class OptionsController {
    * プロバイダー設定のバリデーション
    */
   private validateProviderConfig(provider: AIProvider): { isValid: boolean; error?: string } {
-    const apiKeyInput = document.getElementById(`${provider}-apiKey`) as HTMLInputElement;
+    // OpenAI Compatible用の特別なID処理
+    const apiKeyId = provider === 'openai-compatible' ? 'compatible-apiKey' : `${provider}-apiKey`;
+    const apiKeyInput = document.getElementById(apiKeyId) as HTMLInputElement;
     const apiKey = apiKeyInput?.value || '';
 
     if (!this.validateApiKey(provider, apiKey)) {
