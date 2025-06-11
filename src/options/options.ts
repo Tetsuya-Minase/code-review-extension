@@ -8,7 +8,9 @@ class OptionsController {
   private providerSelect: HTMLSelectElement | null = null;
   private saveButton: HTMLButtonElement | null = null;
   private resetButton: HTMLButtonElement | null = null;
+  private addStepButton: HTMLButtonElement | null = null;
   private statusMessage: HTMLElement | null = null;
+  private stepsContainer: HTMLElement | null = null;
 
   // プロバイダー設定要素
   private providerConfigs: { [key in AIProvider]: HTMLElement | null } = {
@@ -18,12 +20,33 @@ class OptionsController {
     'openai-compatible': null
   };
 
-  // デフォルトのプロンプト
-  private readonly defaultPrompts = {
-    step1: '以下のコード差分を確認し、潜在的な問題点やバグ、セキュリティ上の懸念事項を洗い出してください。特にクリティカルな問題がないかを重点的に確認してください。',
-    step2: '前回の分析結果を踏まえて、以下のコード差分に対する詳細なコードレビューを行ってください。コードの品質、可読性、保守性、パフォーマンスの観点から評価してください。',
-    step3: '前回のレビュー結果を踏まえて、以下のコード差分に対する具体的な改善提案を行ってください。より良いコードにするための実装例も含めて提案してください。'
-  } as const;
+  // ステップカウンター
+  private stepCounter = 0;
+
+  // デフォルトのステップ
+  private readonly defaultSteps: ReviewStepConfig[] = [
+    {
+      id: 'step1',
+      name: 'Step 1: 問題点の洗い出し',
+      enabled: true,
+      order: 1,
+      prompt: '以下のコード差分を確認し、潜在的な問題点やバグ、セキュリティ上の懸念事項を洗い出してください。特にクリティカルな問題がないかを重点的に確認してください。'
+    },
+    {
+      id: 'step2',
+      name: 'Step 2: コードレビュー',
+      enabled: true,
+      order: 2,
+      prompt: '前回の分析結果を踏まえて、以下のコード差分に対する詳細なコードレビューを行ってください。コードの品質、可読性、保守性、パフォーマンスの観点から評価してください。'
+    },
+    {
+      id: 'step3',
+      name: 'Step 3: 改善提案',
+      enabled: true,
+      order: 3,
+      prompt: '前回のレビュー結果を踏まえて、以下のコード差分に対する具体的な改善提案を行ってください。より良いコードにするための実装例も含めて提案してください。'
+    }
+  ];
 
   constructor() {
     this.initialize();
@@ -47,7 +70,9 @@ class OptionsController {
     this.providerSelect = document.getElementById('aiProvider') as HTMLSelectElement;
     this.saveButton = document.getElementById('saveButton') as HTMLButtonElement;
     this.resetButton = document.getElementById('resetButton') as HTMLButtonElement;
+    this.addStepButton = document.getElementById('addStepButton') as HTMLButtonElement;
     this.statusMessage = document.getElementById('statusMessage');
+    this.stepsContainer = document.getElementById('stepsContainer');
 
     // プロバイダー設定要素を取得
     this.providerConfigs.openai = document.getElementById('openai-config');
@@ -66,6 +91,10 @@ class OptionsController {
 
     this.resetButton?.addEventListener('click', () => {
       this.resetToDefaults();
+    });
+
+    this.addStepButton?.addEventListener('click', () => {
+      this.addNewStep();
     });
 
     // プロバイダー選択の変更イベント
@@ -113,22 +142,11 @@ class OptionsController {
       });
 
       // レビューステップ設定
-      config.reviewSteps.forEach((stepConfig) => {
-        const enabledCheckbox = document.getElementById(`${stepConfig.step}-enabled`) as HTMLInputElement;
-        const promptTextarea = document.getElementById(`${stepConfig.step}-prompt`) as HTMLTextAreaElement;
-
-        if (enabledCheckbox) {
-          enabledCheckbox.checked = stepConfig.enabled;
-        }
-
-        if (promptTextarea) {
-          promptTextarea.value = stepConfig.prompt;
-        }
-      });
+      this.renderSteps(config.reviewSteps);
     } catch (error) {
       console.error('設定の読み込みに失敗しました:', error);
-      // デフォルト値を設定
-      this.setDefaultPrompts();
+      // デフォルトステップを設定
+      this.renderSteps(this.defaultSteps);
     }
   }
 
@@ -210,7 +228,7 @@ class OptionsController {
       } else {
         successMessage += `\n⚠️ APIキー: 未設定`;
       }
-      successMessage += `\n📝 有効なレビューステップ: ${enabledSteps}/3`;
+      successMessage += `\n📝 有効なレビューステップ: ${enabledSteps}/${reviewSteps.length}`;
       
       this.showStatus(successMessage, 'success');
       
@@ -244,28 +262,154 @@ class OptionsController {
       if (baseUrlInput) baseUrlInput.value = '';
       if (modelInput) modelInput.value = '';
 
-      // デフォルトプロンプトを設定
-      this.setDefaultPrompts();
-
-      // チェックボックスを全て有効に
-      ['step1', 'step2', 'step3'].forEach((step) => {
-        const checkbox = document.getElementById(`${step}-enabled`) as HTMLInputElement;
-        if (checkbox) {
-          checkbox.checked = true;
-        }
-      });
+      // デフォルトステップを設定
+      this.renderSteps(this.defaultSteps);
 
       this.showStatus('デフォルト設定に戻しました', 'success');
     }
   }
 
   /**
-   * デフォルトプロンプトを設定
+   * ステップをレンダリング
    */
-  private setDefaultPrompts(): void {
-    (document.getElementById('step1-prompt') as HTMLTextAreaElement).value = this.defaultPrompts.step1;
-    (document.getElementById('step2-prompt') as HTMLTextAreaElement).value = this.defaultPrompts.step2;
-    (document.getElementById('step3-prompt') as HTMLTextAreaElement).value = this.defaultPrompts.step3;
+  private renderSteps(steps: readonly ReviewStepConfig[]): void {
+    if (!this.stepsContainer) return;
+
+    this.stepsContainer.innerHTML = '';
+    this.stepCounter = 0;
+
+    steps.forEach((step, index) => {
+      this.createStepElement(step, index);
+    });
+  }
+
+  /**
+   * ステップ要素を作成
+   */
+  private createStepElement(step: ReviewStepConfig, index: number): void {
+    if (!this.stepsContainer) return;
+
+    const stepDiv = document.createElement('div');
+    stepDiv.className = 'step-config';
+    stepDiv.dataset.stepId = step.id;
+
+    stepDiv.innerHTML = `
+      <div class="step-header">
+        <h3>
+          <input type="checkbox" id="${step.id}-enabled" ${step.enabled ? 'checked' : ''} />
+          <input type="text" id="${step.id}-name" class="step-name-input" value="${step.name}" />
+        </h3>
+        <div class="step-controls">
+          <button type="button" class="button button-small move-up" title="上に移動">↑</button>
+          <button type="button" class="button button-small move-down" title="下に移動">↓</button>
+          <button type="button" class="button button-small button-danger remove-step" title="削除">×</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="${step.id}-prompt">プロンプト</label>
+        <textarea 
+          id="${step.id}-prompt" 
+          class="form-textarea" 
+          rows="4"
+          placeholder="このステップで使用するプロンプトを入力してください"
+        >${step.prompt}</textarea>
+      </div>
+    `;
+
+    // イベントリスナーを設定
+    const moveUpBtn = stepDiv.querySelector('.move-up') as HTMLButtonElement;
+    const moveDownBtn = stepDiv.querySelector('.move-down') as HTMLButtonElement;
+    const removeBtn = stepDiv.querySelector('.remove-step') as HTMLButtonElement;
+
+    moveUpBtn?.addEventListener('click', () => this.moveStep(index, -1));
+    moveDownBtn?.addEventListener('click', () => this.moveStep(index, 1));
+    removeBtn?.addEventListener('click', () => this.removeStep(step.id));
+
+    this.stepsContainer.appendChild(stepDiv);
+    this.stepCounter++;
+  }
+
+  /**
+   * 新しいステップを追加
+   */
+  private addNewStep(): void {
+    const newStepNumber = this.stepCounter + 1;
+    const newStep: ReviewStepConfig = {
+      id: `step${Date.now()}`,
+      name: `Step ${newStepNumber}: 新しいステップ`,
+      enabled: true,
+      order: newStepNumber,
+      prompt: 'プロンプトを入力してください'
+    };
+
+    this.createStepElement(newStep, this.stepCounter);
+  }
+
+  /**
+   * ステップを移動
+   */
+  private moveStep(index: number, direction: number): void {
+    const steps = this.collectStepsFromDOM();
+    const newIndex = index + direction;
+
+    if (newIndex < 0 || newIndex >= steps.length) return;
+
+    // 要素を入れ替え
+    [steps[index], steps[newIndex]] = [steps[newIndex], steps[index]];
+    
+    // orderを更新
+    steps.forEach((step, i) => {
+      step.order = i + 1;
+    });
+
+    this.renderSteps(steps);
+  }
+
+  /**
+   * ステップを削除
+   */
+  private removeStep(stepId: string): void {
+    if (confirm('このステップを削除しますか？')) {
+      const steps = this.collectStepsFromDOM().filter(step => step.id !== stepId);
+      
+      // orderを再計算
+      steps.forEach((step, i) => {
+        step.order = i + 1;
+      });
+
+      this.renderSteps(steps);
+    }
+  }
+
+  /**
+   * DOMからステップ情報を収集
+   */
+  private collectStepsFromDOM(): ReviewStepConfig[] {
+    if (!this.stepsContainer) return [];
+
+    const stepElements = this.stepsContainer.querySelectorAll('.step-config');
+    const steps: ReviewStepConfig[] = [];
+
+    stepElements.forEach((element, index) => {
+      const stepId = element.getAttribute('data-step-id');
+      if (!stepId) return;
+
+      const enabledInput = element.querySelector(`#${stepId}-enabled`) as HTMLInputElement;
+      const nameInput = element.querySelector(`#${stepId}-name`) as HTMLInputElement;
+      const promptTextarea = element.querySelector(`#${stepId}-prompt`) as HTMLTextAreaElement;
+
+      if (nameInput && promptTextarea) {
+        steps.push({
+          id: stepId,
+          name: nameInput.value || `Step ${index + 1}`,
+          enabled: enabledInput?.checked ?? true,
+          order: index + 1,
+          prompt: promptTextarea.value || ''
+        });
+      }
+    });
+
+    return steps;
   }
 
   /**

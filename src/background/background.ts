@@ -80,22 +80,25 @@ class BackgroundService {
       // コンテンツスクリプトに開始通知
       this.notifyContentScript('REVIEW_STARTED', { reviewId: this.currentReviewId });
 
-      // 3段階のレビューを順次実行
+      // レビューステップを順次実行
       const results: ReviewResult[] = [];
-      const enabledSteps = config.reviewSteps.filter(step => step.enabled);
+      const enabledSteps = config.reviewSteps
+        .filter(step => step.enabled)
+        .sort((a, b) => a.order - b.order);
 
       for (const stepConfig of enabledSteps) {
         try {
           // ステップ開始を通知
           this.notifyContentScript('STEP_STARTED', { 
-            step: stepConfig.step,
-            stepName: this.getStepName(stepConfig.step)
+            stepId: stepConfig.id,
+            stepName: stepConfig.name
           });
 
           // レビューステップを実行
           const result = await this.executeReviewStep(
             request,
-            stepConfig.step,
+            stepConfig.id,
+            stepConfig.name,
             stepConfig.prompt,
             aiClient,
             results
@@ -108,25 +111,27 @@ class BackgroundService {
 
           // ステップ完了を通知
           this.notifyContentScript('STEP_COMPLETED', { 
-            step: stepConfig.step,
+            stepId: stepConfig.id,
+            stepName: stepConfig.name,
             result: result.content
           });
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : '不明なエラー';
           this.notifyContentScript('STEP_ERROR', {
-            step: stepConfig.step,
+            stepId: stepConfig.id,
+            stepName: stepConfig.name,
             error: errorMessage
           });
           
           // エラーが発生した場合も継続する（他のステップを実行）
-          console.error(`Step ${stepConfig.step} failed:`, error);
+          console.error(`Step ${stepConfig.id} failed:`, error);
         }
       }
 
-      // step3の結果のみを表示
-      const step3Result = results.find(result => result.step === 'step3');
-      const finalResult = step3Result ? step3Result.content : 'レビューが完了しましたが、最終結果が生成されませんでした。';
+      // 最後のステップの結果を表示
+      const lastResult = results.length > 0 ? results[results.length - 1] : null;
+      const finalResult = lastResult ? lastResult.content : 'レビューが完了しましたが、結果が生成されませんでした。';
 
       // 表示結果をストレージに保存
       try {
@@ -154,12 +159,13 @@ class BackgroundService {
    */
   private async executeReviewStep(
     request: ReviewRequest,
-    step: ReviewStep,
+    stepId: string,
+    stepName: string,
     prompt: string,
     aiClient: any,
     previousResults: readonly ReviewResult[]
   ): Promise<ReviewResult> {
-    return await aiClient.executeReview(request, step, prompt, previousResults);
+    return await aiClient.executeReview(request, stepId, stepName, prompt, previousResults);
   }
 
   /**
@@ -177,17 +183,6 @@ class BackgroundService {
     }
   }
 
-  /**
-   * ステップ名を取得
-   */
-  private getStepName(step: ReviewStep): string {
-    const stepNames = {
-      step1: 'Step 1: 問題点の洗い出し',
-      step2: 'Step 2: コードレビュー',
-      step3: 'Step 3: 改善提案'
-    };
-    return stepNames[step] || step;
-  }
 
 
   /**

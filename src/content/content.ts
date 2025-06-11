@@ -116,11 +116,11 @@ class ContentScript {
         sendResponse({ success: true });
         break;
       case 'STEP_COMPLETED':
-        GitHubService.showReviewProgress(`${request.data.step}が完了しました`, 'completed');
+        GitHubService.showReviewProgress(`${request.data.stepName}が完了しました`, 'completed');
         sendResponse({ success: true });
         break;
       case 'STEP_ERROR':
-        GitHubService.showReviewProgress(`${request.data.step}でエラーが発生: ${request.data.error}`, 'error');
+        GitHubService.showReviewProgress(`${request.data.stepName}でエラーが発生: ${request.data.error}`, 'error');
         sendResponse({ success: true });
         break;
       case 'REVIEW_COMPLETED':

@@ -34,18 +34,24 @@ export class StorageService {
     },
     reviewSteps: [
       {
-        step: 'step1',
+        id: 'step1',
+        name: 'Step 1: 問題点の洗い出し',
         enabled: true,
+        order: 1,
         prompt: '以下のコード差分を確認し、潜在的な問題点やバグ、セキュリティ上の懸念事項を洗い出してください。特にクリティカルな問題がないかを重点的に確認してください。'
       },
       {
-        step: 'step2',
+        id: 'step2',
+        name: 'Step 2: コードレビュー',
         enabled: true,
+        order: 2,
         prompt: '前回の分析結果を踏まえて、以下のコード差分に対する詳細なコードレビューを行ってください。コードの品質、可読性、保守性、パフォーマンスの観点から評価してください。'
       },
       {
-        step: 'step3',
+        id: 'step3',
+        name: 'Step 3: 改善提案',
         enabled: true,
+        order: 3,
         prompt: '前回のレビュー結果を踏まえて、以下のコード差分に対する具体的な改善提案を行ってください。より良いコードにするための実装例も含めて提案してください。'
       }
     ] as readonly ReviewStepConfig[]
@@ -65,8 +71,31 @@ export class StorageService {
       const config = result[this.CONFIG_KEY] as ExtensionConfig;
       
       // 設定の妥当性チェック
-      if (!config.reviewSteps || config.reviewSteps.length !== 3) {
+      if (!config.reviewSteps || config.reviewSteps.length === 0) {
         return this.DEFAULT_CONFIG;
+      }
+
+      // 旧形式から新形式へのマイグレーション
+      const migratedSteps = config.reviewSteps.map((step, index) => {
+        if ('step' in step && !('id' in step)) {
+          // 旧形式の場合、新形式に変換
+          const oldStep = step as any;
+          return {
+            id: oldStep.step,
+            name: `Step ${index + 1}`,
+            enabled: oldStep.enabled,
+            order: index + 1,
+            prompt: oldStep.prompt
+          };
+        }
+        return step;
+      }) as ReviewStepConfig[];
+
+      if (migratedSteps.some(step => 'step' in step)) {
+        // マイグレーションした設定を保存
+        const migratedConfig = { ...config, reviewSteps: migratedSteps };
+        await this.saveConfig(migratedConfig);
+        return migratedConfig;
       }
 
       // 新しい設定形式への移行チェック
@@ -144,7 +173,7 @@ export class StorageService {
       const existing = await this.getReviewResults(prId);
       
       // 同じステップの結果があれば置き換え、なければ追加
-      const updated = [...existing.filter(r => r.step !== result.step), result];
+      const updated = [...existing.filter(r => r.stepId !== result.stepId), result];
       
       await chrome.storage.local.set({
         [key]: updated

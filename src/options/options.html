@@ -140,57 +140,13 @@
 
       <!-- レビューステップ設定 -->
       <section class="settings-section">
-        <h2>レビューステップ設定</h2>
+        <div class="steps-header">
+          <h2>レビューステップ設定</h2>
+          <button id="addStepButton" class="button button-secondary">ステップを追加</button>
+        </div>
         
-        <!-- Step 1 -->
-        <div class="step-config">
-          <h3>
-            <input type="checkbox" id="step1-enabled" checked />
-            <label for="step1-enabled">Step 1: 問題点の洗い出し</label>
-          </h3>
-          <div class="form-group">
-            <label for="step1-prompt">プロンプト</label>
-            <textarea 
-              id="step1-prompt" 
-              class="form-textarea" 
-              rows="4"
-              placeholder="このステップで使用するプロンプトを入力してください"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Step 2 -->
-        <div class="step-config">
-          <h3>
-            <input type="checkbox" id="step2-enabled" checked />
-            <label for="step2-enabled">Step 2: コードレビュー</label>
-          </h3>
-          <div class="form-group">
-            <label for="step2-prompt">プロンプト</label>
-            <textarea 
-              id="step2-prompt" 
-              class="form-textarea" 
-              rows="4"
-              placeholder="このステップで使用するプロンプトを入力してください"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Step 3 -->
-        <div class="step-config">
-          <h3>
-            <input type="checkbox" id="step3-enabled" checked />
-            <label for="step3-enabled">Step 3: 改善提案</label>
-          </h3>
-          <div class="form-group">
-            <label for="step3-prompt">プロンプト</label>
-            <textarea 
-              id="step3-prompt" 
-              class="form-textarea" 
-              rows="4"
-              placeholder="このステップで使用するプロンプトを入力してください"
-            ></textarea>
-          </div>
+        <div id="stepsContainer" class="steps-container">
+          <!-- ステップが動的に追加されます -->
         </div>
       </section>
 

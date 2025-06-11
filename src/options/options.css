@@ -362,3 +362,105 @@ body {
     border-top-color: #30363d;
   }
 }
+
+/* 動的ステップ管理のスタイル */
+.steps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step-config {
+  padding: 20px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background-color: #f6f8fa;
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.step-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.step-name-input {
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  min-width: 200px;
+}
+
+.step-name-input:focus {
+  outline: 1px solid #0969da;
+  background: #ffffff;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.step-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.button-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 24px;
+  height: 24px;
+}
+
+.button-danger {
+  background-color: #d1242f;
+  border-color: #d1242f;
+  color: #ffffff;
+}
+
+.button-danger:hover {
+  background-color: #a40e26;
+  border-color: #a40e26;
+}
+
+/* ダークモード用のステップ管理スタイル */
+@media (prefers-color-scheme: dark) {
+  .step-config {
+    background-color: #161b22;
+    border-color: #30363d;
+  }
+
+  .step-name-input {
+    color: #c9d1d9;
+  }
+
+  .step-name-input:focus {
+    outline-color: #58a6ff;
+    background: #0d1117;
+  }
+
+  .button-danger {
+    background-color: #da3633;
+    border-color: #da3633;
+  }
+
+  .button-danger:hover {
+    background-color: #b62324;
+    border-color: #b62324;
+  }
+}
