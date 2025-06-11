@@ -79,6 +79,11 @@ class OptionsController {
     this.providerConfigs.claude = document.getElementById('claude-config');
     this.providerConfigs.gemini = document.getElementById('gemini-config');
     this.providerConfigs['openai-compatible'] = document.getElementById('openai-compatible-config');
+
+    // ステップコンテナの初期化確認
+    if (!this.stepsContainer) {
+      console.error('Steps container not found');
+    }
   }
 
   /**
@@ -142,11 +147,26 @@ class OptionsController {
       });
 
       // レビューステップ設定
-      this.renderSteps(config.reviewSteps);
+      // ステップコンテナが存在することを確認してからレンダリング
+      if (this.stepsContainer) {
+        this.renderSteps(config.reviewSteps);
+      } else {
+        console.error('Steps container not found during loadSettings');
+        // 少し待ってから再試行
+        setTimeout(() => {
+          if (this.stepsContainer) {
+            this.renderSteps(config.reviewSteps);
+          } else {
+            this.renderSteps(this.defaultSteps);
+          }
+        }, 100);
+      }
     } catch (error) {
       console.error('設定の読み込みに失敗しました:', error);
       // デフォルトステップを設定
-      this.renderSteps(this.defaultSteps);
+      if (this.stepsContainer) {
+        this.renderSteps(this.defaultSteps);
+      }
     }
   }
 
@@ -190,23 +210,7 @@ class OptionsController {
       };
       
       // レビューステップ設定を収集
-      const reviewSteps: ReviewStepConfig[] = [
-        {
-          step: 'step1',
-          enabled: (document.getElementById('step1-enabled') as HTMLInputElement)?.checked ?? true,
-          prompt: (document.getElementById('step1-prompt') as HTMLTextAreaElement)?.value || this.defaultPrompts.step1
-        },
-        {
-          step: 'step2',
-          enabled: (document.getElementById('step2-enabled') as HTMLInputElement)?.checked ?? true,
-          prompt: (document.getElementById('step2-prompt') as HTMLTextAreaElement)?.value || this.defaultPrompts.step2
-        },
-        {
-          step: 'step3',
-          enabled: (document.getElementById('step3-enabled') as HTMLInputElement)?.checked ?? true,
-          prompt: (document.getElementById('step3-prompt') as HTMLTextAreaElement)?.value || this.defaultPrompts.step3
-        }
-      ];
+      const reviewSteps = this.collectStepsFromDOM();
 
       const config: ExtensionConfig = {
         selectedProvider,
@@ -385,10 +389,18 @@ class OptionsController {
    * DOMからステップ情報を収集
    */
   private collectStepsFromDOM(): ReviewStepConfig[] {
-    if (!this.stepsContainer) return [];
+    if (!this.stepsContainer) {
+      console.warn('Steps container not found, returning default steps');
+      return this.defaultSteps;
+    }
 
     const stepElements = this.stepsContainer.querySelectorAll('.step-config');
     const steps: ReviewStepConfig[] = [];
+
+    if (stepElements.length === 0) {
+      console.warn('No step elements found, returning default steps');
+      return this.defaultSteps;
+    }
 
     stepElements.forEach((element, index) => {
       const stepId = element.getAttribute('data-step-id');
@@ -408,6 +420,11 @@ class OptionsController {
         });
       }
     });
+
+    if (steps.length === 0) {
+      console.warn('No valid steps collected from DOM, returning default steps');
+      return this.defaultSteps;
+    }
 
     return steps;
   }
