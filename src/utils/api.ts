@@ -1,4 +1,4 @@
-import { AIProvider, ReviewRequest, ReviewResult, ReviewStep } from '../types';
+import { AIProvider, ReviewRequest, ReviewResult } from '../types';
 
 /**
  * AI APIクライアントの基底クラス
@@ -66,7 +66,7 @@ export class OpenAIClient extends BaseAIClient {
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
     // 前のステップの結果を追加（任意のステップ数に対応）
@@ -136,7 +136,7 @@ export class ClaudeClient extends BaseAIClient {
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
     // 前のステップの結果を追加（任意のステップ数に対応）
@@ -208,7 +208,7 @@ export class GeminiClient extends BaseAIClient {
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
     // 前のステップの結果を追加（任意のステップ数に対応）
@@ -280,7 +280,7 @@ export class OpenAICompatibleClient extends BaseAIClient {
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
     // 前のステップの結果を追加（任意のステップ数に対応）

@@ -123,7 +123,6 @@ class OptionsController {
 
       // 各プロバイダーのAPIキーとモデル設定
       Object.entries(config.providers).forEach(([provider, settings]) => {
-        const providerKey = provider as AIProvider;
         
         // APIキー
         const apiKeyInput = document.getElementById(`${provider}-apiKey`) as HTMLInputElement;

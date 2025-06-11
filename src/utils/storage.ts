@@ -1,4 +1,4 @@
-import { ExtensionConfig, ReviewResult, ReviewStepConfig, AIProvider } from '../types';
+import { ExtensionConfig, ReviewResult, ReviewStepConfig } from '../types';
 
 /**
  * Chrome Storage APIのラッパークラス
