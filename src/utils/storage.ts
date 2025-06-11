@@ -91,7 +91,9 @@ export class StorageService {
         return step;
       }) as ReviewStepConfig[];
 
-      if (migratedSteps.some(step => 'step' in step)) {
+      // マイグレーションが発生した場合のみ保存
+      const hasOldFormat = config.reviewSteps.some(step => 'step' in step && !('id' in step));
+      if (hasOldFormat) {
         // マイグレーションした設定を保存
         const migratedConfig = { ...config, reviewSteps: migratedSteps };
         await this.saveConfig(migratedConfig);

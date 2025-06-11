@@ -69,10 +69,11 @@ export class OpenAIClient extends BaseAIClient {
   private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    // 前のステップの結果を追加（順序に基づいて）
+    // 前のステップの結果を追加（任意のステップ数に対応）
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
         const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
         userPrompt += sectionTitle + '\n' + lastResult.content;
       }
@@ -138,10 +139,11 @@ export class ClaudeClient extends BaseAIClient {
   private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    // 前のステップの結果を追加（順序に基づいて）
+    // 前のステップの結果を追加（任意のステップ数に対応）
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
         const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
         userPrompt += sectionTitle + '\n' + lastResult.content;
       }
@@ -209,10 +211,11 @@ export class GeminiClient extends BaseAIClient {
   private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    // 前のステップの結果を追加（順序に基づいて）
+    // 前のステップの結果を追加（任意のステップ数に対応）
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
         const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
         userPrompt += sectionTitle + '\n' + lastResult.content;
       }
@@ -280,10 +283,11 @@ export class OpenAICompatibleClient extends BaseAIClient {
   private buildUserPrompt(request: ReviewRequest, stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    // 前のステップの結果を追加（順序に基づいて）
+    // 前のステップの結果を追加（任意のステップ数に対応）
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
         const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
         userPrompt += sectionTitle + '\n' + lastResult.content;
       }

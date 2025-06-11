@@ -353,20 +353,22 @@ class OptionsController {
    * ステップを移動
    */
   private moveStep(index: number, direction: number): void {
-    const steps = this.collectStepsFromDOM();
+    const originalSteps = this.collectStepsFromDOM();
     const newIndex = index + direction;
 
-    if (newIndex < 0 || newIndex >= steps.length) return;
+    if (newIndex < 0 || newIndex >= originalSteps.length) return;
 
-    // 要素を入れ替え
+    // 新しい配列を作成して要素を入れ替え
+    const steps = [...originalSteps];
     [steps[index], steps[newIndex]] = [steps[newIndex], steps[index]];
     
-    // orderを更新
-    steps.forEach((step, i) => {
-      step.order = i + 1;
-    });
+    // orderを更新した新しいステップ配列を作成
+    const updatedSteps = steps.map((step, i) => ({
+      ...step,
+      order: i + 1
+    }));
 
-    this.renderSteps(steps);
+    this.renderSteps(updatedSteps);
   }
 
   /**
@@ -374,14 +376,15 @@ class OptionsController {
    */
   private removeStep(stepId: string): void {
     if (confirm('このステップを削除しますか？')) {
-      const steps = this.collectStepsFromDOM().filter(step => step.id !== stepId);
+      const originalSteps = this.collectStepsFromDOM().filter(step => step.id !== stepId);
       
-      // orderを再計算
-      steps.forEach((step, i) => {
-        step.order = i + 1;
-      });
+      // orderを再計算した新しいステップ配列を作成
+      const updatedSteps = originalSteps.map((step, i) => ({
+        ...step,
+        order: i + 1
+      }));
 
-      this.renderSteps(steps);
+      this.renderSteps(updatedSteps);
     }
   }
 
