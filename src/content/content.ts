@@ -28,6 +28,7 @@ class ContentScript {
     // PRページまたは差分ページの場合のみ処理を実行
     if (GitHubService.isPRPage() || GitHubService.isDiffPage()) {
       this.injectReviewButton();
+      this.setupDOMObserver();
       this.listenForMessages();
       
       // 保存されたレビュー結果を復元
@@ -52,8 +53,33 @@ class ContentScript {
    * レビューボタンを挿入
    */
   private injectReviewButton(): void {
-    GitHubService.insertReviewButton(() => {
-      this.startReview();
+    try {
+      GitHubService.insertReviewButton(() => {
+        this.startReview();
+      });
+    } catch (error) {
+      console.warn('レビューボタンの挿入に失敗:', error);
+      // 1秒後に再試行
+      setTimeout(() => this.injectReviewButton(), 1000);
+    }
+  }
+
+  /**
+   * DOM監視を設定してボタンの再挿入を行う
+   */
+  private setupDOMObserver(): void {
+    const observer = new MutationObserver((mutations) => {
+      // レビューボタンが存在しない場合は再挿入を試行
+      const existingButton = document.querySelector('.code-review-ai-button');
+      if (!existingButton && (GitHubService.isPRPage() || GitHubService.isDiffPage())) {
+        this.injectReviewButton();
+      }
+    });
+
+    // ページ全体を監視対象にして、子要素の追加・削除を監視
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
     });
   }
 
