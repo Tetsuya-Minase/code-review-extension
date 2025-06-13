@@ -32,9 +32,6 @@ $RECYCLE.BIN/
 .history/
 *.vsix
 
-# for claude
-.claude
-
 # libraries
 node_modules/
 jspm_packages/
