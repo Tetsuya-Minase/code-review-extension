@@ -173,10 +173,10 @@ class ContentScript {
    */
   private sendMessage(type: string, data?: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      // タイムアウトを設定（30秒）
+      // タイムアウトを設定（5分）
       const timeout = setTimeout(() => {
         reject(new Error('メッセージ送信がタイムアウトしました'));
-      }, 30000);
+      }, 300000);
 
       chrome.runtime.sendMessage({ type, data }, (response) => {
         clearTimeout(timeout);

@@ -1,4 +1,4 @@
-import { ReviewRequest, ReviewStep, ReviewResult, PullRequestInfo } from '../types';
+import { ReviewRequest, ReviewResult, PullRequestInfo } from '../types';
 import { StorageService } from '../utils/storage';
 import { AIClientFactory } from '../utils/api';
 
