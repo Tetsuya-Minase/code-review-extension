@@ -23,23 +23,31 @@ After building, load the `dist/` folder as an unpacked extension in Chrome's ext
 
 ## Architecture Overview
 
-This is a Chrome extension for AI-powered GitHub code reviews using OpenAI API. The architecture follows **Layered Architecture** with **TDD principles**.
+This is a Chrome extension for AI-powered GitHub code reviews supporting 4 AI providers (OpenAI, Claude, Gemini, OpenAI Compatible). The architecture follows **Layered Architecture** with **TDD principles**.
 
 ### Core Components
 
 **Background Service** (`src/background/background.ts`)
-- Service worker that handles API communication with OpenAI
+- Service worker that handles API communication with multiple AI providers
 - Manages CORS-restricted requests (GitHub diff fetching)
-- Coordinates the 3-step review process
+- Coordinates multi-step review process (customizable 1-N steps)
 
 **Content Script** (`src/content/content.ts`)
 - Injected into GitHub PR pages (`https://github.com/*/pull/*`)
 - Manages UI integration (review button, result display)
 - Communicates with background service via message passing
 
+**Options Page** (`src/options/`)
+- Settings interface for API keys and AI provider configuration
+- Review step customization (add/delete/reorder steps)
+- Prompt customization for each review step
+
+**Popup** (`src/popup/`)
+- Quick access to settings and extension status
+
 **Utilities**
 - `GitHubService` - GitHub page manipulation and PR info extraction
-- `OpenAIClient` - OpenAI API communication (TODO: implementation pending)
+- `APIClients` - Multiple AI provider communication (OpenAI, Claude, Gemini, OpenAI Compatible)
 - `StorageService` - Chrome extension storage management
 
 ### Message Passing Architecture
@@ -57,13 +65,25 @@ chrome.runtime.sendMessage({ type: 'DISPLAY_RESULT', data: reviewContent })
 
 ### CORS Resolution Strategy
 
-GitHub's `.diff` endpoint is accessed via background script to bypass CORS restrictions that would occur in content script context.
+GitHub's `.diff` endpoint is accessed via background script to bypass CORS restrictions that would occur in content script context. The diff is fetched from:
+```
+https://github.com/{owner}/{repo}/pull/{number}.diff
+```
 
-### 3-Step Review Process
+### Multi-Step Review Process
 
+The extension supports customizable review steps (1 to unlimited):
+
+**Default 3-Step Configuration**:
 1. **Step 1**: Initial problem identification and critical issue detection
 2. **Step 2**: Detailed code review based on Step 1 results and diff
 3. **Step 3**: Improvement suggestions based on Step 2 analysis
+
+**Customizable Features**:
+- Add/delete/reorder review steps
+- Custom prompts for each step
+- Enable/disable individual steps
+- Only the final step result is displayed to users
 
 ## Development Guidelines
 
@@ -85,17 +105,51 @@ All inter-component communication uses strongly typed interfaces:
 - `PullRequestInfo` - PR metadata extraction
 - `ReviewRequest` - Review process data
 - `ReviewResult` - Review step outputs
-- `OpenAIRequest/Response` - API communication
+- `ExtensionConfig` - Extension settings and AI provider configuration
+- `AIProvider` - OpenAI, Claude, Gemini, OpenAI Compatible API communication
 
 ### Security Considerations
-- API keys stored securely in Chrome extension storage
-- HTML content sanitization before DOM insertion
+- API keys stored securely in Chrome Storage API (chrome.storage.sync)
+- HTML content sanitization before DOM insertion (XSS prevention)
+- API key validation for each provider
 - No sensitive data in console logs or error messages
+- CORS handling for external API requests
+
+## AI Provider Support
+
+### Supported Providers
+- **OpenAI**: GPT-4o, O1-Preview, O1-Mini, GPT-4 Turbo
+- **Claude (Anthropic)**: Claude 4 (Sonnet 4), Claude 4 (Opus 4), Claude 3.7 Sonnet
+- **Gemini (Google)**: Gemini 2.0 Flash Exp, Gemini 2.0 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash
+- **OpenAI Compatible**: Ollama, LM Studio, other OpenAI-compatible APIs
+
+### API Implementation Details
+- Each provider has custom API format handling
+- Claude uses `anthropic-dangerous-direct-browser-access` header for CORS
+- Gemini combines system and user prompts
+- OpenAI Compatible allows custom base URL configuration
+
+## Review Process Implementation
+
+### Step Execution Flow
+1. System prompt: Pre-configured step prompt
+2. User prompt: Contains PR diff + previous step results (for step 2+)
+3. Result processing: Only final step result displayed to user
+4. Progress tracking: Real-time status updates during execution
+
+### Display Logic
+- **PR page**: Results shown in right sidebar
+- **Files page (/files)**: Results shown above file list
+- **Format**: Plain markdown text (no HTML parsing)
+- **Content**: Final step result only
 
 ## File Structure Notes
 
 - `manifest.json` - Extension manifest (copied to dist during build)
-- `vite.config.ts` - Custom build process with static file copying
+- `vite.config.ts` - Custom build process with static file copying  
+- `build.mts` - Build script using tsx and zx libraries
 - `src/types/index.ts` - Central type definitions for all components
+- `src/options/` - Settings UI for API keys and review step configuration
+- `src/popup/` - Quick access popup interface
 - `tests/` - Unit tests with coverage requirements
 - Static assets automatically copied to `dist/` during build
