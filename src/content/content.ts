@@ -173,9 +173,22 @@ class ContentScript {
    */
   private sendMessage(type: string, data?: any): Promise<any> {
     return new Promise((resolve, reject) => {
+      // タイムアウトを設定（30秒）
+      const timeout = setTimeout(() => {
+        reject(new Error('メッセージ送信がタイムアウトしました'));
+      }, 30000);
+
       chrome.runtime.sendMessage({ type, data }, (response) => {
+        clearTimeout(timeout);
+        
         if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
+          // runtime.lastErrorの内容によってエラーメッセージを調整
+          const errorMessage = chrome.runtime.lastError.message;
+          if (errorMessage?.includes('message port closed')) {
+            reject(new Error('バックグラウンドスクリプトとの接続が切断されました。ページを再読み込みしてください。'));
+          } else {
+            reject(new Error(`通信エラー: ${errorMessage}`));
+          }
           return;
         }
         

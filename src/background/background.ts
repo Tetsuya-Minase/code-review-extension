@@ -7,6 +7,7 @@ import { AIClientFactory } from '../utils/api';
  */
 class BackgroundService {
   private currentReviewId: string | null = null;
+  private currentTabId: number | null = null;
 
   constructor() {
     this.initialize();
@@ -28,10 +29,15 @@ class BackgroundService {
    */
   private async handleMessage(
     request: any,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
+      // リクエスト元のタブIDを記録
+      if (sender.tab?.id) {
+        this.currentTabId = sender.tab.id;
+      }
+      
       switch (request.type) {
         case 'START_REVIEW':
           await this.startReview(request.data as ReviewRequest);
@@ -172,13 +178,26 @@ class BackgroundService {
    * コンテンツスクリプトに通知を送信
    */
   private async notifyContentScript(type: string, data?: any): Promise<void> {
+    // レビューを開始したタブIDが記録されている場合はそのタブに送信
+    if (this.currentTabId) {
+      try {
+        await chrome.tabs.sendMessage(this.currentTabId, { type, data });
+        return;
+      } catch (error) {
+        console.log('Content script notification to recorded tab failed:', error);
+        // 記録されたタブが無効な場合は、現在のタブにフォールバック
+        this.currentTabId = null;
+      }
+    }
+    
+    // フォールバック: アクティブなタブに送信
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tabs.length > 0 && tabs[0].id) {
         await chrome.tabs.sendMessage(tabs[0].id, { type, data });
       }
     } catch (error) {
-      console.log('Content script notification failed:', error);
+      console.log('Content script notification to active tab failed:', error);
       // エラーを無視（タブが閉じられている場合など）
     }
   }
