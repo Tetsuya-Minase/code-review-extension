@@ -143,13 +143,273 @@ All inter-component communication uses strongly typed interfaces:
 - **Format**: Plain markdown text (no HTML parsing)
 - **Content**: Final step result only
 
-## File Structure Notes
+## Detailed Architecture Analysis
 
-- `manifest.json` - Extension manifest (copied to dist during build)
-- `vite.config.ts` - Custom build process with static file copying  
-- `build.mts` - Build script using tsx and zx libraries
-- `src/types/index.ts` - Central type definitions for all components
-- `src/options/` - Settings UI for API keys and review step configuration
-- `src/popup/` - Quick access popup interface
-- `tests/` - Unit tests with coverage requirements
-- Static assets automatically copied to `dist/` during build
+### Design Patterns Implementation
+
+**Factory Pattern** (`src/utils/api.ts`)
+```typescript
+export class AIClientFactory {
+  static createClient(provider: AIProvider, apiKey: string, model: string, baseUrl?: string): BaseAIClient {
+    switch (provider) {
+      case 'openai': return new OpenAIClient(apiKey, model);
+      case 'claude': return new ClaudeClient(apiKey, model);
+      case 'gemini': return new GeminiClient(apiKey, model);
+      case 'openai-compatible': return new OpenAICompatibleClient(apiKey, model, baseUrl);
+    }
+  }
+}
+```
+
+**Observer Pattern** (DOM Mutation Monitoring)
+```typescript
+private setupDOMObserver(): void {
+  const observer = new MutationObserver((mutations) => {
+    const existingButton = document.querySelector('.code-review-ai-button');
+    if (!existingButton && (GitHubService.isPRPage() || GitHubService.isDiffPage())) {
+      this.injectReviewButton();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+```
+
+**Strategy Pattern** (AI Provider Abstraction)
+- `BaseAIClient` abstract class defines common interface
+- Each provider implements specific API communication logic
+- Uniform `executeReview` method across all providers
+
+### Component Communication Flow
+
+```
+Content Script              Background Service           AI Providers
+     │                           │                           │
+     ├─ START_REVIEW ────────────►│                           │
+     │                           ├─ Validate Config         │
+     │                           ├─ Create AI Client        │
+     │                           ├─ Execute Step 1 ─────────►│
+     │                           │◄─ Step 1 Result ─────────┤
+     │◄─ STEP_COMPLETED ─────────┤                           │
+     │                           ├─ Execute Step 2 ─────────►│
+     │                           │◄─ Step 2 Result ─────────┤
+     │◄─ STEP_COMPLETED ─────────┤                           │
+     │                           ├─ Execute Step 3 ─────────►│
+     │                           │◄─ Step 3 Result ─────────┤
+     │◄─ REVIEW_COMPLETED ───────┤                           │
+     ├─ Display Final Result     │                           │
+```
+
+### GitHub UI Integration Strategy
+
+**Multi-Selector Approach** for button insertion:
+```typescript
+const selectors = [
+  '.gh-header-actions',           // Primary GitHub UI
+  '.gh-header .gh-header-actions', // Nested header actions
+  '.timeline-comment-actions',    // Legacy UI
+  '.pr-toolbar .diffbar-item',    // Toolbar integration
+  '.gh-header-meta',             // Fallback 1
+  '.application-main'            // Last resort
+];
+```
+
+**Fallback Mechanism**: If all selectors fail, creates floating button with `position: fixed`
+
+### Data Flow Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   GitHub DOM    │───►│  Content Script  │───►│ Background Service│
+│   (PR/Diff)     │    │                  │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                │                        │
+                                │                        ▼
+                                │                ┌─────────────────┐
+                                │                │   AI Providers  │
+                                │                │ OpenAI│Claude   │
+                                │                │ Gemini│OpenAI-C │
+                                │                └─────────────────┘
+                                │                        │
+                                │                        ▼
+                                │                ┌─────────────────┐
+                                │                │ Chrome Storage  │
+                                │                │ • Config Data   │
+                                │                │ • Review Results│
+                                │                │ • Display Cache │
+                                │                └─────────────────┘
+                                │                        │
+                                └────────────────────────┘
+```
+
+## Advanced Implementation Details
+
+### Error Handling Strategy
+
+**Graceful Degradation**:
+- Individual step failures don't stop the entire review process
+- Background service continues with remaining steps
+- User receives partial results with error indicators
+
+**Timeout Management**:
+- Content script implements 5-minute timeout for review requests
+- Background service handles long-running AI API calls
+- Progress updates prevent user confusion during long operations
+
+### Memory Management
+
+**Immutable Data Patterns**:
+```typescript
+interface ReviewStepConfig {
+  readonly id: string;
+  readonly name: string;
+  readonly prompt: string;
+  readonly enabled: boolean;
+  readonly order: number;
+}
+```
+
+**Storage Optimization**:
+- Review results stored per PR ID (`${owner}-${repo}-${number}`)
+- Displayed results cached separately for quick restoration
+- Configuration migration handled automatically
+
+### Build System Architecture
+
+**Multi-Configuration Vite Setup**:
+- `vite.config.content.ts` - Content script bundling
+- `vite.config.background.ts` - Service worker bundling  
+- `vite.config.options.ts` - Options page bundling
+- `vite.config.popup.ts` - Popup bundling
+
+**Static Asset Pipeline**:
+```typescript
+// build.mts orchestrates:
+1. Clean dist directory
+2. Build all configurations in sequence
+3. Copy static files (HTML, CSS, manifest, icons)
+4. Validate build outputs
+```
+
+### Testing Architecture
+
+**Comprehensive Test Coverage**:
+- **Unit Tests**: Individual component testing with mocked dependencies
+- **Integration Tests**: Cross-component communication testing
+- **Build Tests**: Verify bundled output correctness (no import statements)
+- **DOM Tests**: GitHub UI integration simulation
+
+**Test Patterns**:
+```typescript
+// AAA Pattern consistently applied
+describe('GitHubService.extractPRInfo', () => {
+  it('extracts PR information from URL correctly', () => {
+    // Arrange
+    window.location.pathname = '/owner/repo/pull/123';
+    
+    // Act
+    const prInfo = GitHubService.extractPRInfo();
+    
+    // Assert
+    expect(prInfo).toEqual({
+      owner: 'owner', repo: 'repo', number: 123,
+      diffUrl: 'https://github.com/owner/repo/pull/123/files'
+    });
+  });
+});
+```
+
+## Security Implementation
+
+### XSS Prevention
+```typescript
+private static escapeHtml(text: string): string {
+  const escapeMap: { [key: string]: string } = {
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, char => escapeMap[char]);
+}
+```
+
+### API Key Validation
+```typescript
+private validateApiKey(provider: AIProvider, apiKey: string): boolean {
+  switch (provider) {
+    case 'openai': return apiKey.startsWith('sk-');
+    case 'claude': return apiKey.startsWith('sk-ant-');
+    case 'gemini': return apiKey.startsWith('AIza');
+    case 'openai-compatible': return apiKey.length > 0;
+  }
+}
+```
+
+### CORS Security Model
+- Background service acts as proxy for GitHub API calls
+- Content script restricted to DOM manipulation only
+- All external API requests routed through background service
+- Proper manifest permissions for each API endpoint
+
+## File Structure & Dependencies
+
+### Project Structure
+```
+code-review-extension/
+├── src/
+│   ├── background/background.ts     # Service worker main logic
+│   ├── content/
+│   │   ├── content.ts              # GitHub DOM integration
+│   │   └── styles.css              # UI styling
+│   ├── options/
+│   │   ├── options.ts              # Settings management
+│   │   ├── options.html            # Settings UI
+│   │   └── options.css             # Settings styling
+│   ├── popup/
+│   │   ├── popup.ts                # Status display
+│   │   ├── popup.html              # Popup UI
+│   │   └── popup.css               # Popup styling
+│   ├── types/index.ts              # Centralized type definitions
+│   └── utils/
+│       ├── api.ts                  # AI provider clients
+│       ├── github.ts               # GitHub service
+│       └── storage.ts              # Chrome storage wrapper
+├── tests/
+│   ├── background.build.test.ts    # Build validation
+│   └── utils/github.test.ts        # GitHub service tests
+├── build.mts                       # Build orchestration script
+├── manifest.json                   # Chrome extension manifest
+└── vite.config.*.ts               # Component-specific build configs
+```
+
+### External Dependencies
+- **Core**: TypeScript 5.3.3, Vite 5.0.10, Jest 29.7.0
+- **Chrome APIs**: @types/chrome 0.0.251
+- **Build Tools**: tsx 4.20.3, zx 8.5.5
+- **Linting**: ESLint 8.56.0 with TypeScript parser
+- **Testing**: jest-environment-jsdom for DOM simulation
+
+### Internal Module Dependencies
+```
+types/index.ts ←── All modules (centralized type definitions)
+utils/storage.ts ←── options/, popup/, background/
+utils/github.ts ←── content/
+utils/api.ts ←── background/
+background/ ←── content/ (via Chrome message passing)
+```
+
+## Performance Considerations
+
+### Bundle Optimization
+- Separate builds prevent code duplication across contexts
+- Tree-shaking eliminates unused dependencies
+- ES modules format for modern Chrome compatibility
+
+### Runtime Performance
+- Lazy loading of AI clients (factory pattern)
+- DOM mutation observer with debouncing
+- Efficient selector fallback chain
+- Chrome storage caching for configuration data
+
+### Memory Usage
+- Immutable data structures prevent memory leaks
+- Proper cleanup of event listeners and observers
+- Limited storage of review results (per-PR basis)
+- Background service remains lightweight
