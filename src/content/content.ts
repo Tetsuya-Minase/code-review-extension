@@ -172,8 +172,20 @@ class ContentScript {
    * バックグラウンドスクリプトにメッセージを送信
    */
   private sendMessage(type: string, data?: any): Promise<any> {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type, data }, resolve);
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ type, data }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        
+        if (!response) {
+          reject(new Error('バックグラウンドスクリプトからの応答がありません'));
+          return;
+        }
+        
+        resolve(response);
+      });
     });
   }
 }
