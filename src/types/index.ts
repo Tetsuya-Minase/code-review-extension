@@ -1,15 +1,17 @@
 /**
  * レビューステップの定義
  */
-export type ReviewStep = 'step1' | 'step2' | 'step3';
+export type ReviewStep = string;
 
 /**
  * レビューステップの設定
  */
 export interface ReviewStepConfig {
-  readonly step: ReviewStep;
+  readonly id: string;
+  readonly name: string;
   readonly prompt: string;
   readonly enabled: boolean;
+  readonly order: number;
 }
 
 /**
@@ -56,7 +58,8 @@ export interface PullRequestInfo {
  * レビュー結果
  */
 export interface ReviewResult {
-  readonly step: ReviewStep;
+  readonly stepId: string;
+  readonly stepName: string;
   readonly content: string;
   readonly timestamp: number;
 }

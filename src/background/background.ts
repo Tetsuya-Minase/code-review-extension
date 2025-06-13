@@ -1,4 +1,4 @@
-import { ReviewRequest, ReviewStep, ReviewResult, PullRequestInfo } from '../types';
+import { ReviewRequest, ReviewResult, PullRequestInfo } from '../types';
 import { StorageService } from '../utils/storage';
 import { AIClientFactory } from '../utils/api';
 
@@ -7,6 +7,7 @@ import { AIClientFactory } from '../utils/api';
  */
 class BackgroundService {
   private currentReviewId: string | null = null;
+  private currentTabId: number | null = null;
 
   constructor() {
     this.initialize();
@@ -28,10 +29,15 @@ class BackgroundService {
    */
   private async handleMessage(
     request: any,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
+      // リクエスト元のタブIDを記録
+      if (sender.tab?.id) {
+        this.currentTabId = sender.tab.id;
+      }
+      
       switch (request.type) {
         case 'START_REVIEW':
           await this.startReview(request.data as ReviewRequest);
@@ -80,22 +86,25 @@ class BackgroundService {
       // コンテンツスクリプトに開始通知
       this.notifyContentScript('REVIEW_STARTED', { reviewId: this.currentReviewId });
 
-      // 3段階のレビューを順次実行
+      // レビューステップを順次実行
       const results: ReviewResult[] = [];
-      const enabledSteps = config.reviewSteps.filter(step => step.enabled);
+      const enabledSteps = config.reviewSteps
+        .filter(step => step.enabled)
+        .sort((a, b) => a.order - b.order);
 
       for (const stepConfig of enabledSteps) {
         try {
           // ステップ開始を通知
           this.notifyContentScript('STEP_STARTED', { 
-            step: stepConfig.step,
-            stepName: this.getStepName(stepConfig.step)
+            stepId: stepConfig.id,
+            stepName: stepConfig.name
           });
 
           // レビューステップを実行
           const result = await this.executeReviewStep(
             request,
-            stepConfig.step,
+            stepConfig.id,
+            stepConfig.name,
             stepConfig.prompt,
             aiClient,
             results
@@ -108,25 +117,27 @@ class BackgroundService {
 
           // ステップ完了を通知
           this.notifyContentScript('STEP_COMPLETED', { 
-            step: stepConfig.step,
+            stepId: stepConfig.id,
+            stepName: stepConfig.name,
             result: result.content
           });
 
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : '不明なエラー';
           this.notifyContentScript('STEP_ERROR', {
-            step: stepConfig.step,
+            stepId: stepConfig.id,
+            stepName: stepConfig.name,
             error: errorMessage
           });
           
           // エラーが発生した場合も継続する（他のステップを実行）
-          console.error(`Step ${stepConfig.step} failed:`, error);
+          console.error(`Step ${stepConfig.id} failed:`, error);
         }
       }
 
-      // step3の結果のみを表示
-      const step3Result = results.find(result => result.step === 'step3');
-      const finalResult = step3Result ? step3Result.content : 'レビューが完了しましたが、最終結果が生成されませんでした。';
+      // 最後のステップの結果を表示
+      const lastResult = results.length > 0 ? results[results.length - 1] : null;
+      const finalResult = lastResult ? lastResult.content : 'レビューが完了しましたが、結果が生成されませんでした。';
 
       // 表示結果をストレージに保存
       try {
@@ -154,40 +165,43 @@ class BackgroundService {
    */
   private async executeReviewStep(
     request: ReviewRequest,
-    step: ReviewStep,
+    stepId: string,
+    stepName: string,
     prompt: string,
     aiClient: any,
     previousResults: readonly ReviewResult[]
   ): Promise<ReviewResult> {
-    return await aiClient.executeReview(request, step, prompt, previousResults);
+    return await aiClient.executeReview(request, stepId, stepName, prompt, previousResults);
   }
 
   /**
    * コンテンツスクリプトに通知を送信
    */
   private async notifyContentScript(type: string, data?: any): Promise<void> {
+    // レビューを開始したタブIDが記録されている場合はそのタブに送信
+    if (this.currentTabId) {
+      try {
+        await chrome.tabs.sendMessage(this.currentTabId, { type, data });
+        return;
+      } catch (error) {
+        console.log('Content script notification to recorded tab failed:', error);
+        // 記録されたタブが無効な場合は、現在のタブにフォールバック
+        this.currentTabId = null;
+      }
+    }
+    
+    // フォールバック: アクティブなタブに送信
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tabs.length > 0 && tabs[0].id) {
         await chrome.tabs.sendMessage(tabs[0].id, { type, data });
       }
     } catch (error) {
-      console.log('Content script notification failed:', error);
+      console.log('Content script notification to active tab failed:', error);
       // エラーを無視（タブが閉じられている場合など）
     }
   }
 
-  /**
-   * ステップ名を取得
-   */
-  private getStepName(step: ReviewStep): string {
-    const stepNames = {
-      step1: 'Step 1: 問題点の洗い出し',
-      step2: 'Step 2: コードレビュー',
-      step3: 'Step 3: 改善提案'
-    };
-    return stepNames[step] || step;
-  }
 
 
   /**

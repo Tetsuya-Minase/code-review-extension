@@ -11,11 +11,23 @@ describe('GitHubService', () => {
     // DOMをクリア
     document.body.innerHTML = '';
     
-    // chrome.runtime.sendMessageのモック
+    // chrome APIの完全なモック
     (window as any).chrome = {
       runtime: {
         sendMessage: jest.fn(),
         lastError: null
+      },
+      storage: {
+        local: {
+          get: jest.fn().mockResolvedValue({}),
+          set: jest.fn().mockResolvedValue(undefined),
+          remove: jest.fn().mockResolvedValue(undefined)
+        },
+        sync: {
+          get: jest.fn().mockResolvedValue({}),
+          set: jest.fn().mockResolvedValue(undefined),
+          remove: jest.fn().mockResolvedValue(undefined)
+        }
       }
     };
   });
@@ -229,7 +241,7 @@ index 1234567..abcdefg 100644
       expect(buttons.length).toBe(1);
     });
 
-    it('gh-header-metaがある場合はアクションコンテナを作成する', () => {
+    it('gh-header-metaがある場合はボタンを挿入する', () => {
       document.body.innerHTML = `
         <div class="gh-header-meta">
           <div class="existing-content">既存のコンテンツ</div>
@@ -242,19 +254,19 @@ index 1234567..abcdefg 100644
       const button = document.querySelector('button.code-review-ai-button') as HTMLButtonElement;
       expect(button).toBeTruthy();
       expect(button.textContent).toContain('レビュー');
-      
-      // アクションコンテナが作成されたことを確認
-      const actionsContainer = document.querySelector('.gh-header-actions');
-      expect(actionsContainer).toBeTruthy();
     });
 
-    it('挿入場所が見つからない場合はエラーをスローする', () => {
+    it('挿入場所が見つからない場合はフローティングボタンを作成する', () => {
       document.body.innerHTML = '<div>Empty page</div>';
 
       const onClick = jest.fn();
-      expect(() => GitHubService.insertReviewButton(onClick)).toThrow(
-        'レビューボタンの挿入場所が見つかりませんでした'
-      );
+      GitHubService.insertReviewButton(onClick);
+
+      // フローティングボタンがbodyに追加されることを確認
+      const button = document.querySelector('button.code-review-ai-button') as HTMLButtonElement;
+      expect(button).toBeTruthy();
+      expect(button.textContent).toContain('レビュー');
+      expect(button.style.position).toBe('fixed');
     });
   });
 
@@ -275,7 +287,7 @@ index 1234567..abcdefg 100644
       expect(resultElement?.innerHTML).toContain('<pre class="review-content-raw">## レビュー結果\n\nテストレビュー内容</pre>');
     });
 
-    it('差分ページの左カラムにレビュー結果を表示する', () => {
+    it('差分ページの左カラムにレビュー結果を表示する', async () => {
       window.location.pathname = '/owner/repo/pull/123/files';
       document.body.innerHTML = `
         <div id="files">
@@ -284,7 +296,7 @@ index 1234567..abcdefg 100644
       `;
 
       const content = '## レビュー結果\n\nテストレビュー内容';
-      GitHubService.displayReviewResult(content);
+      await GitHubService.displayReviewResult(content, false);
 
       const resultElement = document.querySelector('.code-review-ai-result');
       expect(resultElement).toBeTruthy();
@@ -294,14 +306,14 @@ index 1234567..abcdefg 100644
       expect(filesContainer?.firstChild).toBe(resultElement);
     });
 
-    it('XSS攻撃を防ぐ', () => {
+    it('XSS攻撃を防ぐ', async () => {
       window.location.pathname = '/owner/repo/pull/123';
       document.body.innerHTML = `
         <div class="Layout-sidebar"></div>
       `;
 
       const maliciousContent = '<script>alert("XSS")</script>';
-      GitHubService.displayReviewResult(maliciousContent);
+      await GitHubService.displayReviewResult(maliciousContent, false);
 
       const resultElement = document.querySelector('.code-review-ai-result');
       expect(resultElement?.innerHTML).not.toContain('<script>');
@@ -312,7 +324,7 @@ index 1234567..abcdefg 100644
       window.location.pathname = '/owner/repo/pull/123';
       document.body.innerHTML = '<div>Empty page</div>';
 
-      await expect(GitHubService.displayReviewResult('content')).rejects.toThrow(
+      await expect(GitHubService.displayReviewResult('content', false)).rejects.toThrow(
         'レビュー結果の表示場所が見つかりませんでした'
       );
     });

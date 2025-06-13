@@ -28,6 +28,7 @@ class ContentScript {
     // PRページまたは差分ページの場合のみ処理を実行
     if (GitHubService.isPRPage() || GitHubService.isDiffPage()) {
       this.injectReviewButton();
+      this.setupDOMObserver();
       this.listenForMessages();
       
       // 保存されたレビュー結果を復元
@@ -52,8 +53,33 @@ class ContentScript {
    * レビューボタンを挿入
    */
   private injectReviewButton(): void {
-    GitHubService.insertReviewButton(() => {
-      this.startReview();
+    try {
+      GitHubService.insertReviewButton(() => {
+        this.startReview();
+      });
+    } catch (error) {
+      console.warn('レビューボタンの挿入に失敗:', error);
+      // 1秒後に再試行
+      setTimeout(() => this.injectReviewButton(), 1000);
+    }
+  }
+
+  /**
+   * DOM監視を設定してボタンの再挿入を行う
+   */
+  private setupDOMObserver(): void {
+    const observer = new MutationObserver((mutations) => {
+      // レビューボタンが存在しない場合は再挿入を試行
+      const existingButton = document.querySelector('.code-review-ai-button');
+      if (!existingButton && (GitHubService.isPRPage() || GitHubService.isDiffPage())) {
+        this.injectReviewButton();
+      }
+    });
+
+    // ページ全体を監視対象にして、子要素の追加・削除を監視
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
     });
   }
 
@@ -116,11 +142,11 @@ class ContentScript {
         sendResponse({ success: true });
         break;
       case 'STEP_COMPLETED':
-        GitHubService.showReviewProgress(`${request.data.step}が完了しました`, 'completed');
+        GitHubService.showReviewProgress(`${request.data.stepName}が完了しました`, 'completed');
         sendResponse({ success: true });
         break;
       case 'STEP_ERROR':
-        GitHubService.showReviewProgress(`${request.data.step}でエラーが発生: ${request.data.error}`, 'error');
+        GitHubService.showReviewProgress(`${request.data.stepName}でエラーが発生: ${request.data.error}`, 'error');
         sendResponse({ success: true });
         break;
       case 'REVIEW_COMPLETED':
@@ -146,8 +172,33 @@ class ContentScript {
    * バックグラウンドスクリプトにメッセージを送信
    */
   private sendMessage(type: string, data?: any): Promise<any> {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type, data }, resolve);
+    return new Promise((resolve, reject) => {
+      // タイムアウトを設定（5分）
+      const timeout = setTimeout(() => {
+        reject(new Error('メッセージ送信がタイムアウトしました'));
+      }, 300000);
+
+      chrome.runtime.sendMessage({ type, data }, (response) => {
+        clearTimeout(timeout);
+        
+        if (chrome.runtime.lastError) {
+          // runtime.lastErrorの内容によってエラーメッセージを調整
+          const errorMessage = chrome.runtime.lastError.message;
+          if (errorMessage?.includes('message port closed')) {
+            reject(new Error('バックグラウンドスクリプトとの接続が切断されました。ページを再読み込みしてください。'));
+          } else {
+            reject(new Error(`通信エラー: ${errorMessage}`));
+          }
+          return;
+        }
+        
+        if (!response) {
+          reject(new Error('バックグラウンドスクリプトからの応答がありません'));
+          return;
+        }
+        
+        resolve(response);
+      });
     });
   }
 }

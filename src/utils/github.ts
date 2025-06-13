@@ -76,33 +76,69 @@ export class GitHubService {
       return;
     }
     
-    // PRタイトル横の操作エリアを探す（PRページ・差分ページ共通）
-    let actionsContainer: Element | null = document.querySelector('.gh-header-actions');
+    const button = this.createReviewButton(onClick);
     
-    // フォールバック: より一般的なセレクタを試す
-    if (!actionsContainer) {
-      actionsContainer = document.querySelector('.gh-header .gh-header-meta .gh-header-actions');
-    }
+    // 複数のセレクタを試行してボタンを挿入
+    const selectors = [
+      // GitHub新UI対応
+      '.gh-header-actions',
+      '.gh-header .gh-header-actions',
+      '.gh-header-meta .gh-header-actions',
+      
+      // 従来のGitHubUI
+      '.timeline-comment-header .timeline-comment-actions',
+      '.pr-toolbar .diffbar-item',
+      '.pr-review-tools',
+      
+      // さらなるフォールバック
+      '.gh-header-meta',
+      '.gh-header',
+      '.pr-header-meta',
+      '#partial-discussion-header',
+      '.discussion-timeline-actions',
+      
+      // ファイル一覧ページ用
+      '.pr-toolbar',
+      '.diffbar',
+      '#files',
+      
+      // 最後の手段として、ページ全体のコンテナ
+      '.application-main',
+      '#js-repo-pjax-container',
+      '.container-xl'
+    ];
     
-    // 更なるフォールバック: PRヘッダー全体を探す
-    if (!actionsContainer) {
-      const prHeader = document.querySelector('.gh-header-meta');
-      if (prHeader) {
-        // アクションコンテナを作成
-        const actionDiv = document.createElement('div');
-        actionDiv.className = 'gh-header-actions';
-        prHeader.appendChild(actionDiv);
-        actionsContainer = actionDiv;
+    let inserted = false;
+    
+    for (const selector of selectors) {
+      const container = document.querySelector(selector);
+      if (container) {
+        try {
+          // コンテナの種類に応じて挿入方法を調整
+          if (selector.includes('actions') || selector.includes('toolbar')) {
+            // アクション系コンテナは先頭に挿入
+            container.insertBefore(button, container.firstChild);
+          } else if (selector.includes('header') || selector.includes('meta')) {
+            // ヘッダー系は末尾に追加
+            container.appendChild(button);
+          } else {
+            // その他は先頭に挿入
+            container.insertBefore(button, container.firstChild);
+          }
+          inserted = true;
+          console.log(`レビューボタンを挿入しました: ${selector}`);
+          break;
+        } catch (error) {
+          console.warn(`セレクタ ${selector} への挿入に失敗:`, error);
+          continue;
+        }
       }
     }
     
-    if (!actionsContainer) {
-      throw new Error('レビューボタンの挿入場所が見つかりませんでした');
+    // すべて失敗した場合はフローティングボタンを作成
+    if (!inserted) {
+      this.createFloatingReviewButton(onClick);
     }
-    
-    // ボタンを作成して挿入
-    const button = this.createReviewButton(onClick);
-    actionsContainer.insertBefore(button, actionsContainer.firstChild);
   }
   
   /**
@@ -114,8 +150,46 @@ export class GitHubService {
     const button = document.createElement('button');
     button.className = `btn btn-sm ${this.REVIEW_BUTTON_CLASS}`;
     button.textContent = '🤖 レビュー';
+    button.style.cssText = `
+      margin: 4px;
+      background-color: #238636;
+      color: white;
+      border: 1px solid #238636;
+      border-radius: 6px;
+      padding: 5px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
     button.addEventListener('click', onClick);
+    
+    // ホバー効果
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = '#2ea043';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = '#238636';
+    });
+    
     return button;
+  }
+
+  /**
+   * フローティングレビューボタンを作成（最後の手段）
+   * @param onClick クリック時のコールバック関数
+   */
+  private static createFloatingReviewButton(onClick: () => void): void {
+    const button = this.createReviewButton(onClick);
+    button.style.cssText += `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    `;
+    
+    document.body.appendChild(button);
+    console.log('フローティングレビューボタンを作成しました');
   }
 
   /**

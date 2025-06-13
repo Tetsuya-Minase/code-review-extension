@@ -1,4 +1,4 @@
-import { AIProvider, ReviewRequest, ReviewResult, ReviewStep } from '../types';
+import { AIProvider, ReviewRequest, ReviewResult } from '../types';
 
 /**
  * AI APIクライアントの基底クラス
@@ -10,7 +10,7 @@ abstract class BaseAIClient {
     protected readonly baseUrl?: string
   ) {}
 
-  abstract executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults?: readonly ReviewResult[]): Promise<ReviewResult>;
+  abstract executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults?: readonly ReviewResult[]): Promise<ReviewResult>;
 }
 
 /**
@@ -19,8 +19,8 @@ abstract class BaseAIClient {
 export class OpenAIClient extends BaseAIClient {
   private readonly apiUrl = 'https://api.openai.com/v1/chat/completions';
 
-  async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const userPrompt = this.buildUserPrompt(request, step, previousResults);
+  async executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
+    const userPrompt = this.buildUserPrompt(request, stepId, previousResults);
     
     const requestBody = {
       model: this.model,
@@ -59,24 +59,23 @@ export class OpenAIClient extends BaseAIClient {
     }
 
     return {
-      step,
+      stepId,
+      stepName,
       content: content.trim(),
       timestamp: Date.now()
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (step === 'step2' && previousResults.length > 0) {
-      const step1Result = previousResults.find(r => r.step === 'step1');
-      if (step1Result) {
-        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
-      }
-    } else if (step === 'step3' && previousResults.length > 0) {
-      const step2Result = previousResults.find(r => r.step === 'step2');
-      if (step2Result) {
-        userPrompt += '# レビュー結果\n' + step2Result.content;
+    // 前のステップの結果を追加（任意のステップ数に対応）
+    if (previousResults.length > 0) {
+      const lastResult = previousResults[previousResults.length - 1];
+      if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
+        const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
+        userPrompt += sectionTitle + '\n' + lastResult.content;
       }
     }
 
@@ -90,8 +89,8 @@ export class OpenAIClient extends BaseAIClient {
 export class ClaudeClient extends BaseAIClient {
   private readonly apiUrl = 'https://api.anthropic.com/v1/messages';
 
-  async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const userPrompt = this.buildUserPrompt(request, step, previousResults);
+  async executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
+    const userPrompt = this.buildUserPrompt(request, stepId, previousResults);
     
     const requestBody = {
       model: this.model,
@@ -130,24 +129,23 @@ export class ClaudeClient extends BaseAIClient {
     }
 
     return {
-      step,
+      stepId,
+      stepName,
       content: content.trim(),
       timestamp: Date.now()
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (step === 'step2' && previousResults.length > 0) {
-      const step1Result = previousResults.find(r => r.step === 'step1');
-      if (step1Result) {
-        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
-      }
-    } else if (step === 'step3' && previousResults.length > 0) {
-      const step2Result = previousResults.find(r => r.step === 'step2');
-      if (step2Result) {
-        userPrompt += '# レビュー結果\n' + step2Result.content;
+    // 前のステップの結果を追加（任意のステップ数に対応）
+    if (previousResults.length > 0) {
+      const lastResult = previousResults[previousResults.length - 1];
+      if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
+        const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
+        userPrompt += sectionTitle + '\n' + lastResult.content;
       }
     }
 
@@ -163,8 +161,8 @@ export class GeminiClient extends BaseAIClient {
     return `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
   }
 
-  async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const userPrompt = this.buildUserPrompt(request, step, previousResults);
+  async executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
+    const userPrompt = this.buildUserPrompt(request, stepId, previousResults);
     const fullPrompt = prompt + '\n\n' + userPrompt;
     
     const requestBody = {
@@ -203,24 +201,23 @@ export class GeminiClient extends BaseAIClient {
     }
 
     return {
-      step,
+      stepId,
+      stepName,
       content: content.trim(),
       timestamp: Date.now()
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (step === 'step2' && previousResults.length > 0) {
-      const step1Result = previousResults.find(r => r.step === 'step1');
-      if (step1Result) {
-        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
-      }
-    } else if (step === 'step3' && previousResults.length > 0) {
-      const step2Result = previousResults.find(r => r.step === 'step2');
-      if (step2Result) {
-        userPrompt += '# レビュー結果\n' + step2Result.content;
+    // 前のステップの結果を追加（任意のステップ数に対応）
+    if (previousResults.length > 0) {
+      const lastResult = previousResults[previousResults.length - 1];
+      if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
+        const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
+        userPrompt += sectionTitle + '\n' + lastResult.content;
       }
     }
 
@@ -236,8 +233,8 @@ export class OpenAICompatibleClient extends BaseAIClient {
     return `${this.baseUrl}/chat/completions`;
   }
 
-  async executeReview(request: ReviewRequest, step: ReviewStep, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
-    const userPrompt = this.buildUserPrompt(request, step, previousResults);
+  async executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
+    const userPrompt = this.buildUserPrompt(request, stepId, previousResults);
     
     const requestBody = {
       model: this.model,
@@ -276,24 +273,23 @@ export class OpenAICompatibleClient extends BaseAIClient {
     }
 
     return {
-      step,
+      stepId,
+      stepName,
       content: content.trim(),
       timestamp: Date.now()
     };
   }
 
-  private buildUserPrompt(request: ReviewRequest, step: ReviewStep, previousResults: readonly ReviewResult[]): string {
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
     let userPrompt = '# diff\n' + request.diff + '\n\n';
 
-    if (step === 'step2' && previousResults.length > 0) {
-      const step1Result = previousResults.find(r => r.step === 'step1');
-      if (step1Result) {
-        userPrompt += '# 注意すべき箇所\n' + step1Result.content;
-      }
-    } else if (step === 'step3' && previousResults.length > 0) {
-      const step2Result = previousResults.find(r => r.step === 'step2');
-      if (step2Result) {
-        userPrompt += '# レビュー結果\n' + step2Result.content;
+    // 前のステップの結果を追加（任意のステップ数に対応）
+    if (previousResults.length > 0) {
+      const lastResult = previousResults[previousResults.length - 1];
+      if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
+        const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
+        userPrompt += sectionTitle + '\n' + lastResult.content;
       }
     }
 
