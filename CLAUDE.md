@@ -87,6 +87,10 @@ The extension supports customizable review steps (1 to unlimited):
 
 ## Development Guidelines
 
+### Quality Assurance Workflow
+- **Always run `/project:commit-with-check` at the end of your work** - This command ensures comprehensive testing and proper commit creation
+- The commit orchestrator performs systematic testing before creating commits to maintain project integrity
+
 ### TDD Requirements
 - **Always write tests first** (Red → Green → Refactor cycle)
 - Target coverage: 80% statements, 70% branches
