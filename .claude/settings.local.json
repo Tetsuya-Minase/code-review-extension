@@ -5,7 +5,13 @@
       "Bash(npm run lint)",
       "Bash(npm test)",
       "Bash(rm:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm test:*)",
+      "Bash(cat:*)"
     ]
   },
   "enableAllProjectMcpServers": false
