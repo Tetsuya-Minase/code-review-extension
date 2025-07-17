@@ -298,10 +298,122 @@ export class OpenAICompatibleClient extends BaseAIClient {
 }
 
 /**
+ * Amazon Bedrock APIクライアント
+ */
+export class BedrockClient extends BaseAIClient {
+  private readonly region: string;
+  private readonly domain: string;
+
+  constructor(apiKey: string, model: string, region: string = 'us-east-1', domain: string = 'amazonaws.com') {
+    super(apiKey, model);
+    this.region = region;
+    this.domain = domain;
+  }
+
+  private get apiUrl() {
+    return `https://bedrock-runtime.${this.region}.${this.domain}/model/${this.model}/invoke`;
+  }
+
+  async executeReview(request: ReviewRequest, stepId: string, stepName: string, prompt: string, previousResults: readonly ReviewResult[] = []): Promise<ReviewResult> {
+    const userPrompt = this.buildUserPrompt(request, stepId, previousResults);
+    
+    // Claudeモデルの場合の処理
+    if (this.model.includes('claude')) {
+      const requestBody = {
+        anthropic_version: "bedrock-2023-05-31",
+        max_tokens: 20000,
+        temperature: 0.3,
+        system: prompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ]
+      };
+
+      const response = await this.makeBedrockRequest(requestBody);
+      const content = response.content?.[0]?.text;
+      
+      if (!content) {
+        throw new Error('Bedrock APIから有効な応答が得られませんでした');
+      }
+
+      return {
+        stepId,
+        stepName,
+        content: content.trim(),
+        timestamp: Date.now()
+      };
+    }
+
+    // Titanモデルの場合の処理
+    if (this.model.includes('titan')) {
+      const requestBody = {
+        inputText: prompt + '\n\n' + userPrompt,
+        textGenerationConfig: {
+          temperature: 0.3,
+          maxTokenCount: 2000
+        }
+      };
+
+      const response = await this.makeBedrockRequest(requestBody);
+      const content = response.results?.[0]?.outputText;
+      
+      if (!content) {
+        throw new Error('Bedrock APIから有効な応答が得られませんでした');
+      }
+
+      return {
+        stepId,
+        stepName,
+        content: content.trim(),
+        timestamp: Date.now()
+      };
+    }
+
+    throw new Error(`Unsupported Bedrock model: ${this.model}`);
+  }
+
+  private async makeBedrockRequest(requestBody: any): Promise<any> {
+    const response = await fetch(this.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Bedrock API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  private buildUserPrompt(request: ReviewRequest, _stepId: string, previousResults: readonly ReviewResult[]): string {
+    let userPrompt = '# diff\n' + request.diff + '\n\n';
+
+    // 前のステップの結果を追加（任意のステップ数に対応）
+    if (previousResults.length > 0) {
+      const lastResult = previousResults[previousResults.length - 1];
+      if (lastResult) {
+        // ステップ数に応じてセクションタイトルを動的に決定
+        const sectionTitle = previousResults.length === 1 ? '# 注意すべき箇所' : '# レビュー結果';
+        userPrompt += sectionTitle + '\n' + lastResult.content;
+      }
+    }
+
+    return userPrompt;
+  }
+}
+
+/**
  * AIクライアントファクトリー
  */
 export class AIClientFactory {
-  static createClient(provider: AIProvider, apiKey: string, model: string, baseUrl?: string): BaseAIClient {
+  static createClient(provider: AIProvider, apiKey: string, model: string, baseUrl?: string, region?: string): BaseAIClient {
     switch (provider) {
       case 'openai':
         return new OpenAIClient(apiKey, model);
@@ -314,6 +426,10 @@ export class AIClientFactory {
           throw new Error('OpenAI Compatible requires baseUrl');
         }
         return new OpenAICompatibleClient(apiKey, model, baseUrl);
+      case 'bedrock':
+        const bedrockRegion = region || 'us-east-1';
+        const domain = baseUrl || 'amazonaws.com';
+        return new BedrockClient(apiKey, model, bedrockRegion, domain);
       default:
         throw new Error(`Unsupported AI provider: ${provider}`);
     }
