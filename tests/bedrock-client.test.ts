@@ -1,5 +1,5 @@
 import { BedrockClient } from '../src/utils/api';
-import { ReviewRequest, PullRequestInfo, ReviewResult } from '../src/types';
+import { ReviewRequest, ReviewResult } from '../src/types';
 
 // グローバルなfetchをモック
 global.fetch = jest.fn();

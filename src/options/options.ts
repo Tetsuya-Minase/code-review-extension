@@ -133,9 +133,9 @@ class OptionsController {
         }
 
         // モデル
-        const modelSelect = document.getElementById(`${provider}-model`) as HTMLSelectElement;
-        if (modelSelect && settings.model) {
-          modelSelect.value = settings.model;
+        const modelElement = document.getElementById(`${provider}-model`) as HTMLSelectElement | HTMLInputElement;
+        if (modelElement && settings.model) {
+          modelElement.value = settings.model;
         }
 
         // OpenAI Compatible用のベースURL
@@ -222,7 +222,7 @@ class OptionsController {
         },
         bedrock: {
           apiKey: (document.getElementById('bedrock-apiKey') as HTMLInputElement)?.value || '',
-          model: (document.getElementById('bedrock-model') as HTMLSelectElement)?.value || 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+          model: (document.getElementById('bedrock-model') as HTMLInputElement)?.value || 'anthropic.claude-3-5-sonnet-20241022-v2:0',
           region: (document.getElementById('bedrock-region') as HTMLInputElement)?.value || 'us-east-1',
           baseUrl: (document.getElementById('bedrock-domain') as HTMLInputElement)?.value || 'amazonaws.com'
         }

@@ -155,13 +155,17 @@
           </div>
           <div class="form-group">
             <label for="bedrock-model">モデル</label>
-            <select id="bedrock-model" class="form-select">
-              <option value="anthropic.claude-3-5-sonnet-20241022-v2:0">Claude 3.5 Sonnet v2</option>
-              <option value="anthropic.claude-3-5-haiku-20241022-v1:0">Claude 3.5 Haiku</option>
-              <option value="anthropic.claude-3-opus-20240229-v1:0">Claude 3 Opus</option>
-              <option value="amazon.titan-text-premier-v1:0">Titan Text Premier</option>
-              <option value="amazon.titan-text-express-v1">Titan Text Express</option>
-            </select>
+            <input 
+              type="text" 
+              id="bedrock-model" 
+              class="form-input" 
+              placeholder="anthropic.claude-3-5-sonnet-20241022-v2:0"
+              value="anthropic.claude-3-5-sonnet-20241022-v2:0"
+            />
+            <p class="form-help">
+              使用するBedrockモデルIDを入力してください<br>
+              例：anthropic.claude-3-5-sonnet-20241022-v2:0、amazon.titan-text-premier-v1:0
+            </p>
           </div>
           <div class="form-group">
             <label for="bedrock-region">リージョン</label>
