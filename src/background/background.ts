@@ -77,7 +77,8 @@ class BackgroundService {
         config.selectedProvider,
         currentProvider.apiKey,
         currentProvider.model || 'gpt-4o',
-        currentProvider.baseUrl
+        currentProvider.baseUrl,
+        currentProvider.region
       );
 
       // レビューIDを生成

@@ -17,7 +17,8 @@ class OptionsController {
     openai: null,
     claude: null,
     gemini: null,
-    'openai-compatible': null
+    'openai-compatible': null,
+    bedrock: null
   };
 
   // ステップカウンター
@@ -79,6 +80,7 @@ class OptionsController {
     this.providerConfigs.claude = document.getElementById('claude-config');
     this.providerConfigs.gemini = document.getElementById('gemini-config');
     this.providerConfigs['openai-compatible'] = document.getElementById('openai-compatible-config');
+    this.providerConfigs.bedrock = document.getElementById('bedrock-config');
 
     // ステップコンテナの初期化確認
     if (!this.stepsContainer) {
@@ -143,6 +145,18 @@ class OptionsController {
             baseUrlInput.value = settings.baseUrl;
           }
         }
+
+        // Bedrock用のリージョンとドメイン
+        if (provider === 'bedrock') {
+          const regionInput = document.getElementById('bedrock-region') as HTMLInputElement;
+          const domainInput = document.getElementById('bedrock-domain') as HTMLInputElement;
+          if (regionInput && settings.region) {
+            regionInput.value = settings.region;
+          }
+          if (domainInput && settings.baseUrl) {
+            domainInput.value = settings.baseUrl;
+          }
+        }
       });
 
       // レビューステップ設定
@@ -205,6 +219,12 @@ class OptionsController {
           apiKey: (document.getElementById('compatible-apiKey') as HTMLInputElement)?.value || '',
           baseUrl: (document.getElementById('compatible-baseUrl') as HTMLInputElement)?.value || '',
           model: (document.getElementById('compatible-model') as HTMLInputElement)?.value || ''
+        },
+        bedrock: {
+          apiKey: (document.getElementById('bedrock-apiKey') as HTMLInputElement)?.value || '',
+          model: (document.getElementById('bedrock-model') as HTMLSelectElement)?.value || 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+          region: (document.getElementById('bedrock-region') as HTMLInputElement)?.value || 'us-east-1',
+          baseUrl: (document.getElementById('bedrock-domain') as HTMLInputElement)?.value || 'amazonaws.com'
         }
       };
       
@@ -251,7 +271,7 @@ class OptionsController {
   private resetToDefaults(): void {
     if (confirm('設定をデフォルトに戻しますか？')) {
       // 全プロバイダーのAPIキーをクリア
-      const apiKeyIds = ['openai-apiKey', 'claude-apiKey', 'gemini-apiKey', 'compatible-apiKey'];
+      const apiKeyIds = ['openai-apiKey', 'claude-apiKey', 'gemini-apiKey', 'compatible-apiKey', 'bedrock-apiKey'];
       apiKeyIds.forEach(id => {
         const input = document.getElementById(id) as HTMLInputElement;
         if (input) {
@@ -264,6 +284,12 @@ class OptionsController {
       const modelInput = document.getElementById('compatible-model') as HTMLInputElement;
       if (baseUrlInput) baseUrlInput.value = '';
       if (modelInput) modelInput.value = '';
+
+      // Bedrock特有のフィールドもクリア
+      const regionInput = document.getElementById('bedrock-region') as HTMLInputElement;
+      const domainInput = document.getElementById('bedrock-domain') as HTMLInputElement;
+      if (regionInput) regionInput.value = 'us-east-1';
+      if (domainInput) domainInput.value = 'amazonaws.com';
 
       // デフォルトステップを設定
       this.renderSteps(this.defaultSteps);
@@ -519,6 +545,8 @@ class OptionsController {
         return apiKey.startsWith('AIza');
       case 'openai-compatible':
         return apiKey.length > 0; // 任意の形式
+      case 'bedrock':
+        return apiKey.length > 0; // AWS認証情報は形式が多様
       default:
         return false;
     }
@@ -538,7 +566,8 @@ class OptionsController {
         openai: 'OpenAI APIキーは sk- で始まる必要があります',
         claude: 'Claude APIキーは sk-ant- で始まる必要があります', 
         gemini: 'Gemini APIキーは AIza で始まる必要があります',
-        'openai-compatible': 'APIキーを入力してください'
+        'openai-compatible': 'APIキーを入力してください',
+        bedrock: 'AWS認証情報を入力してください'
       };
       return { isValid: false, error: errorMessages[provider] };
     }

@@ -30,6 +30,12 @@ export class StorageService {
         apiKey: '',
         baseUrl: '',
         model: ''
+      },
+      bedrock: {
+        apiKey: '',
+        model: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+        region: 'us-east-1',
+        baseUrl: 'amazonaws.com'
       }
     },
     reviewSteps: [
@@ -122,6 +128,12 @@ export class StorageService {
               apiKey: '',
               baseUrl: '',
               model: ''
+            },
+            bedrock: {
+              apiKey: '',
+              model: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+              region: 'us-east-1',
+              baseUrl: 'amazonaws.com'
             }
           },
           reviewSteps: config.reviewSteps

@@ -17,7 +17,7 @@ export interface ReviewStepConfig {
 /**
  * AIプロバイダーの種類
  */
-export type AIProvider = 'openai' | 'claude' | 'gemini' | 'openai-compatible';
+export type AIProvider = 'openai' | 'claude' | 'gemini' | 'openai-compatible' | 'bedrock';
 
 /**
  * AIプロバイダー設定
@@ -27,6 +27,7 @@ export interface AIProviderConfig {
   readonly apiKey: string;
   readonly baseUrl?: string; // OpenAI Compatible用
   readonly model?: string; // デフォルトモデル
+  readonly region?: string; // Bedrock用
 }
 
 /**
@@ -39,6 +40,7 @@ export interface ExtensionConfig {
       readonly apiKey: string;
       readonly baseUrl?: string;
       readonly model?: string;
+      readonly region?: string;
     };
   };
   readonly reviewSteps: readonly ReviewStepConfig[];
